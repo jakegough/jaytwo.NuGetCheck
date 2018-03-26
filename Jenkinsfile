@@ -10,7 +10,7 @@ node('linux && make && docker') {
             checkout scm
         }
         
-        timestamp = sh(returnStdout: true, script: "date +'%Y%m%d%H%M%S").toString().trim()
+        timestamp = sh(returnStdout: true, script: "date +'%Y%m%d%H%M%S'").toString().trim()
         
         stage('Set In Progress') {
             updateBuildStatusInProgress(github_username, github_repository, jenkins_credential_id_github);
