@@ -9,17 +9,24 @@ node('linux && make && docker') {
         stage('Clone') {
             checkout scm
         }
+        
+        timestamp = sh(returnStdout: true, script: "date +'%Y%m%d%H%M%S").toString().trim()
+        
         stage('Set In Progress') {
             updateBuildStatusInProgress(github_username, github_repository, jenkins_credential_id_github);
         }
-        stage ('Build') {
-            sh "make docker-build DOCKER_TAG_SUFFIX=-${BUILD_TIMESTAMP}"
+        try {
+            stage ('Build') {
+                sh "make docker-build DOCKER_TAG_SUFFIX=-${timestamp}"
+            }
+            stage ('Test') {
+                sh "make docker-test DOCKER_TAG_SUFFIX=-${timestamp}"
+            }
         }
-        stage ('Test') {
-            sh "make docker-test DOCKER_TAG_SUFFIX=-${BUILD_TIMESTAMP}"
-        }
-        stage ('Docker Cleanup') {
-            sh "make docker-cleanup DOCKER_TAG_SUFFIX=-${BUILD_TIMESTAMP}"
+        finally {
+            stage ('Docker Cleanup') {
+                sh "make docker-cleanup DOCKER_TAG_SUFFIX=-${timestamp}"
+            }
         }
         stage('Set Success') {
             updateBuildStatusSuccessful(github_username, github_repository, jenkins_credential_id_github);
@@ -30,10 +37,9 @@ node('linux && make && docker') {
         throw e
     }
     finally {
-        stage("Cleanup") {
-            // clean workspace
-            cleanWs()
-        }        
+        // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
+        // clean workspace
+        cleanWs()     
     }
 }
 
