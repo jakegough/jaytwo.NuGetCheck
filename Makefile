@@ -27,7 +27,8 @@ publish: clean build
 publish-beta: PACK_ARG=--version-suffix beta-$(shell date +'%Y%m%d%H%M%S')
 publish-beta: publish
 
-DOCKER_TAG?=jaytwonugetcheck
+DOCKER_TAG_PREFIX?=jaytwonugetcheck
+DOCKER_TAG?=${DOCKER_TAG_PREFIX}${DOCKER_TAG_SUFFIX}
 docker-build: clean
 	docker build -t ${DOCKER_TAG} . --target builder
   
@@ -48,4 +49,4 @@ docker-publish: docker-build
 	docker run --rm ${DOCKER_TAG} make publish
   
 docker-cleanup:
-	docker rmi ${DOCKER_TAG}
+	docker rmi ${DOCKER_TAG} || echo "docker tag ${DOCKER_TAG} not found"

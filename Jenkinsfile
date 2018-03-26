@@ -13,11 +13,14 @@ node('linux && make && docker') {
             updateBuildStatusInProgress(github_username, github_repository, jenkins_credential_id_github);
         }
         stage ('Build') {
-            sh "make docker-build"
+            sh "make docker-build DOCKER_TAG_SUFFIX=-${BUILD_TIMESTAMP}"
         }
         stage ('Test') {
-            sh "make docker-test"
-        } 
+            sh "make docker-test DOCKER_TAG_SUFFIX=-${BUILD_TIMESTAMP}"
+        }
+        stage ('Docker Cleanup') {
+            sh "make docker-cleanup DOCKER_TAG_SUFFIX=-${BUILD_TIMESTAMP}"
+        }
         stage('Set Success') {
             updateBuildStatusSuccessful(github_username, github_repository, jenkins_credential_id_github);
         }
@@ -28,11 +31,6 @@ node('linux && make && docker') {
     }
     finally {
         stage("Cleanup") {
-            // remove old images
-            // see: http://stackoverflow.com/questions/32723111/how-to-remove-old-and-unused-docker-images
-            // sh 'docker rmi $(docker images --filter "dangling=true" -q --no-trunc)'
-            // sh 'docker rmi $(docker images | grep "none" | awk \'/ / { print $3 }\')'
-            
             // clean workspace
             cleanWs()
         }        
