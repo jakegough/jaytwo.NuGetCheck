@@ -7,6 +7,7 @@ def jenkins_credential_id_dockerhub = 'userpass-dockerhub-jakegough'
 node('linux && make && docker') {
     try {
         stage('Clone') {
+            cleanWs()
             checkout scm
         }
         stage('Set In Progress') {
@@ -29,16 +30,8 @@ node('linux && make && docker') {
         finally {
             // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
             sh "make docker-cleanup DOCKER_TAG_SUFFIX=-${timestamp}"
+            xunit tools: [MSTest(pattern: 'testResults/**/*.trx')]
         }
-
-        publishers {
-          archiveXUnit {
-            msTest {
-              pattern('**/*.trx')
-            }
-          }
-        }
-
         stage('Set Success') {
             updateBuildStatusSuccessful(github_username, github_repository, jenkins_credential_id_github);
         }
@@ -50,7 +43,7 @@ node('linux && make && docker') {
     finally {
         // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
         // clean workspace
-        cleanWs()     
+        cleanWs(deleteDirs: true, patterns: [[type: 'EXCLUDE', pattern: 'testResults/**']])
     }
 }
 

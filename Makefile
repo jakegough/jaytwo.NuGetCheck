@@ -22,10 +22,11 @@ run: build
 unit-test: build
 	dotnet test ./test/jaytwo.NuGetCheck.Tests \
 		--results-directory ../../testResults \
-		--logger "trx;LogFileName=test_results.xml"
+		--logger "trx;LogFileName=jaytwo.NuGetCheck.Tests.trx"
   
 integration-test: build
 	cd ./scripts; \
+		chmod +x ./integration-tests.sh; \
 		./integration-tests.sh
 
 test: unit-test integration-test
@@ -39,7 +40,7 @@ publish-beta: publish
 
 DOCKER_TAG_PREFIX?=jaytwonugetcheck
 DOCKER_TAG?=${DOCKER_TAG_PREFIX}${DOCKER_TAG_SUFFIX}
-docker-build: clean
+docker-build:
 	docker build -t ${DOCKER_TAG} . --target builder
   
 docker-test: docker-build
@@ -51,6 +52,7 @@ docker-unit-test: docker-build
 	export DOCKER_UNIT_TEST_TAG=${DOCKER_UNIT_TEST_TAG}; \
 	export DOCKER_UNIT_TEST_RESULTS_NAME=${DOCKER_UNIT_TEST_RESULTS_NAME}; \
 	cd ./scripts; \
+		chmod +x ./docker-unit-tests.sh; \
 		./docker-unit-tests.sh
 
 docker-integration-test: docker-build
@@ -71,3 +73,5 @@ docker-publish: docker-build
   
 docker-cleanup:
 	docker rmi ${DOCKER_TAG} || echo "docker tag ${DOCKER_TAG} not found"
+	docker rm ${DOCKER_UNIT_TEST_RESULTS_NAME} || echo "docker tag ${DOCKER_TAG} not found"
+	docker rmi ${DOCKER_UNIT_TEST_TAG} || echo "docker tag ${DOCKER_TAG} not found"

@@ -20,9 +20,18 @@ namespace jaytwo.NuGetCheck
 
         public int Run(string[] args)
         {
-            return Parser.Default
-                .ParseArguments<RunOptions>(args)
-                .MapResult(
+            ParserResult<RunOptions> parseResult;
+
+            try
+            {
+                parseResult = Parser.Default.ParseArguments<RunOptions>(args);
+            }
+            catch
+            {
+                return 1;
+            }
+
+            return parseResult.MapResult(
                     options => RunWithOptions(options),
                     errors => 1
                 );
