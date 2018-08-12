@@ -27,10 +27,18 @@ node('linux && make && docker') {
             }
         }
         finally {
-            stage ('Docker Cleanup') {
-                sh "make docker-cleanup DOCKER_TAG_SUFFIX=-${timestamp}"
-            }
+            // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
+            sh "make docker-cleanup DOCKER_TAG_SUFFIX=-${timestamp}"
         }
+
+        publishers {
+          archiveXUnit {
+            msTest {
+              pattern('**/*.trx')
+            }
+          }
+        }
+
         stage('Set Success') {
             updateBuildStatusSuccessful(github_username, github_repository, jenkins_credential_id_github);
         }
