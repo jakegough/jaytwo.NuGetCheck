@@ -1,0 +1,1 @@
+dotnet ../src/jaytwo.NuGetCheck/bin/Debug/netcoreapp2.0/jaytwo.NuGetCheck.dll --packageId=xunit --minVersion=2.0.0 --maxVersion=2.0.1

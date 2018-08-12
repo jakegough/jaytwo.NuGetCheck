@@ -19,8 +19,11 @@ node('linux && make && docker') {
             stage ('Build') {
                 sh "make docker-build DOCKER_TAG_SUFFIX=-${timestamp}"
             }
-            stage ('Test') {
-                sh "make docker-test DOCKER_TAG_SUFFIX=-${timestamp}"
+            stage ('Unit Test') {
+                sh "make docker-unit-test DOCKER_TAG_SUFFIX=-${timestamp}"
+            }
+            stage ('Integration Test') {
+                sh "make docker-integration-test DOCKER_TAG_SUFFIX=-${timestamp}"
             }
         }
         finally {
