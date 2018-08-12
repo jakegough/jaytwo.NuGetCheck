@@ -14,7 +14,7 @@ COPY Makefile .
 RUN make restore
 
 
-FROM base AS builder
+FROM restored AS builder
 WORKDIR /src
 COPY . /src
 RUN make build
@@ -25,7 +25,7 @@ RUN make publish
 
 
 FROM builder AS unit-test
-RUN chmod a+x scripts/*.sh
+RUN chmod a+rx scripts/*.sh
 RUN make unit-test || echo "FAIL" > "testResults/.failed"
 
 
