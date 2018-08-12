@@ -25,7 +25,7 @@ RUN make publish
 
 
 FROM builder AS unit-test
-RUN chmod +x scripts/*.sh
+RUN chmod a+x scripts/*.sh
 RUN make unit-test || echo "FAIL" > "testResults/.failed"
 
 
