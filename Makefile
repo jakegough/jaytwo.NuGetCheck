@@ -31,12 +31,12 @@ integration-test: build
 
 test: unit-test integration-test
 
-publish: clean build
+pack: clean build
 	cd ./src/jaytwo.NuGetCheck; \
-		dotnet publish -o ../../out ${PACK_ARG}
+		dotnet pack -o ../../out ${PACK_ARG}
 
-publish-beta: PACK_ARG=--version-suffix beta-${TIMESTAMP}
-publish-beta: publish
+pack-beta: PACK_ARG=--version-suffix beta-${TIMESTAMP}
+pack-beta: pack
 
 DOCKER_TAG_PREFIX?=jaytwonugetcheck
 DOCKER_TAG?=${DOCKER_TAG_PREFIX}${DOCKER_TAG_SUFFIX}
@@ -61,11 +61,18 @@ docker-integration-test: docker-build
 docker-run: docker-build
 	docker build -t ${DOCKER_TAG} . --target builder
   
-DOCKER_PACK_MAKE_TARGETS?=pack
+DOCKER_PACK_BUILD_TARGET?=packer-results
+DOCKER_PACK_TAG?=${DOCKER_TAG}__pack
+DOCKER_PACK_RESULTS_NAME?=${DOCKER_TAG}__pack_${TIMESTAMP}
 docker-pack: docker-build
-	docker run --rm ${DOCKER_TAG} make ${DOCKER_PACK_MAKE_TARGETS}
+	export DOCKER_PACK_BUILD_TARGET=${DOCKER_PACK_BUILD_TARGET}; \
+	export DOCKER_PACK_TAG=${DOCKER_PACK_TAG}; \
+	export DOCKER_PACK_RESULTS_NAME=${DOCKER_PACK_RESULTS_NAME}; \
+	cd ./scripts; \
+		chmod +x ./docker-pack.sh; \
+		./docker-pack.sh
 
-docker-pack-beta: DOCKER_PACK_MAKE_TARGETS=pack-beta
+docker-pack-beta: DOCKER_PACK_BUILD_TARGET=packer-beta-results
 docker-pack-beta: docker-pack
 
 docker-publish: docker-build
@@ -73,5 +80,5 @@ docker-publish: docker-build
   
 docker-cleanup:
 	docker rmi ${DOCKER_TAG} || echo "docker tag ${DOCKER_TAG} not found"
-	docker rm ${DOCKER_UNIT_TEST_RESULTS_NAME} || echo "docker tag ${DOCKER_TAG} not found"
-	docker rmi ${DOCKER_UNIT_TEST_TAG} || echo "docker tag ${DOCKER_TAG} not found"
+	docker rm ${DOCKER_UNIT_TEST_RESULTS_NAME} || echo "container ${DOCKER_UNIT_TEST_RESULTS_NAME} not found"
+	docker rmi ${DOCKER_UNIT_TEST_TAG} || echo "docker tag ${DOCKER_UNIT_TEST_TAG} not found"
