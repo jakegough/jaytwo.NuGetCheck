@@ -82,3 +82,5 @@ docker-cleanup:
 	docker rmi ${DOCKER_TAG} || echo "docker tag ${DOCKER_TAG} not found"
 	docker rm ${DOCKER_UNIT_TEST_RESULTS_NAME} || echo "container ${DOCKER_UNIT_TEST_RESULTS_NAME} not found"
 	docker rmi ${DOCKER_UNIT_TEST_TAG} || echo "docker tag ${DOCKER_UNIT_TEST_TAG} not found"
+	docker rm ${DOCKER_PACK_RESULTS_NAME} || echo "container ${DOCKER_PACK_RESULTS_NAME} not found"
+	docker rmi ${DOCKER_PACK_TAG} || echo "docker tag ${DOCKER_PACK_TAG} not found"
