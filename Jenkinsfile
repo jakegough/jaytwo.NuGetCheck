@@ -26,6 +26,18 @@ node('linux && make && docker') {
             stage ('Integration Test') {
                 sh "make docker-integration-test DOCKER_TAG_SUFFIX=-${timestamp}"
             }
+            stage ('Pack') {
+                if(env.BRANCH_NAME == 'master'){
+                    sh "make docker-pack DOCKER_TAG_SUFFIX=-${timestamp}"
+                } else {
+                    sh "make docker-pack-beta DOCKER_TAG_SUFFIX=-${timestamp}"
+                }
+            }
+            if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop'){
+                stage ('Push') {
+                    sh "make docker-push DOCKER_TAG_SUFFIX=-${timestamp}"
+                }
+            }
         }
         finally {
             // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
