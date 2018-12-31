@@ -14,7 +14,7 @@ node('linux && make && docker') {
             updateBuildStatusInProgress(github_username, github_repository, jenkins_credential_id_github);
         }
         
-        timestamp = sh(returnStdout: true, script: "date +'%Y%m%d%H%M%S'").toString().trim()
+        def timestamp = sh(returnStdout: true, script: "date +'%Y%m%d%H%M%S'").toString().trim()
         
         try {
             stage ('Build') {
