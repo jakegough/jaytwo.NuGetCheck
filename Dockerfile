@@ -1,4 +1,4 @@
-FROM microsoft/dotnet:2.0.9-sdk-2.1.202-stretch AS base
+FROM microsoft/dotnet:2.2.104-sdk-stretch AS base
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     make \
@@ -19,35 +19,44 @@ COPY . /src
 RUN make clean build
 
 
-FROM builder AS unit-test
-RUN make unit-test || echo "FAIL" > "testResults/.failed"
-
-
-FROM alpine AS unit-test-results
-COPY --from=unit-test /src/testResults/* /testResults/
-
-
 FROM builder AS packer
 RUN make pack
 
 
-FROM alpine AS packer-results
-COPY --from=packer /src/out/* /out/
+FROM scratch AS packer-results
+COPY --from=packer /src/out/packed/* /packed/
+
+
+FROM base AS tooldemo
+WORKDIR /root
+ENV PATH="${PATH}:/root/.dotnet/tools"
+COPY container.nuget.config /nuget.config
+COPY --from=packer-results /packed/* /nupkgs/
+RUN dotnet tool install -g jaytwo.NuGetCheck
+
+
+FROM builder AS unit-test
+RUN make unit-test || echo "FAIL" > "testResults/.failed"
+
+
+FROM scratch AS unit-test-results
+COPY --from=unit-test /src/out/testResults/* /testResults/
 
 
 FROM builder AS packer-beta
 RUN make pack-beta
 
 
-FROM alpine AS packer-beta-results
-COPY --from=packer-beta /src/out/* /out/
+FROM scratch AS packer-beta-results
+COPY --from=packer-beta /src/out/packed/* /packed/
 
 
 FROM builder AS publisher
+WORKDIR /src
 RUN make publish
 
 
-FROM microsoft/dotnet:2.0.9-runtime AS app
+FROM microsoft/dotnet:2.2.2-runtime-alpine AS app
 WORKDIR /app
-COPY --from=publisher /src/out /app
+COPY --from=publisher /src/out/published /app
 ENTRYPOINT ["dotnet", "jaytwo.NuGetCheck.dll"]

@@ -34,8 +34,8 @@ node('linux && make && docker') {
                 }
             }
             if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop'){
-                stage ('Push') {
-                    sh "make docker-push DOCKER_TAG_SUFFIX=-${timestamp}"
+                stage ('Publish') {
+                    sh "make docker-publish DOCKER_TAG_SUFFIX=-${timestamp}"
                 }
             }
         }

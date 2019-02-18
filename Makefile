@@ -7,7 +7,6 @@ clean:
 	find . -name obj | xargs rm -vrf
 	find . -name publish | xargs rm -vrf
 	find . -name project.lock.json | xargs rm -vrf
-	find . -name testResults | xargs rm -vrf
 	find . -name out | xargs rm -vrf
 
 restore:
@@ -21,7 +20,7 @@ run: build
 
 unit-test: build
 	dotnet test ./test/jaytwo.NuGetCheck.Tests \
-		--results-directory ../../testResults \
+		--results-directory ../../out/testResults \
 		--logger "trx;LogFileName=jaytwo.NuGetCheck.Tests.trx"
   
 integration-test: build
@@ -33,10 +32,14 @@ test: unit-test integration-test
 
 pack: clean build
 	cd ./src/jaytwo.NuGetCheck; \
-		dotnet pack -o ../../out ${PACK_ARG}
+		dotnet pack -o ../../out/packed ${PACK_ARG}
 
 pack-beta: PACK_ARG=--version-suffix beta-${TIMESTAMP}
 pack-beta: pack
+
+publish:
+	cd ./src/jaytwo.NuGetCheck; \
+		dotnet publish -o ../../out/published ${PACK_ARG}
 
 DOCKER_TAG_PREFIX?=jaytwonugetcheck
 DOCKER_TAG?=${DOCKER_TAG_PREFIX}${DOCKER_TAG_SUFFIX}
