@@ -1,8 +1,6 @@
-﻿using Moq;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System;
 using System.Threading.Tasks;
+using Moq;
 using Xunit;
 
 namespace jaytwo.NuGetCheck.Tests
@@ -10,7 +8,7 @@ namespace jaytwo.NuGetCheck.Tests
     public class NugetCheckProgramTests
     {
         [Fact]
-        public void Run_returns_negative_1_when_no_package_results()
+        public async Task Run_returns_negative_1_when_no_package_results()
         {
             // arrange
             var packageId = "anything";
@@ -26,7 +24,7 @@ namespace jaytwo.NuGetCheck.Tests
             var args = new[] { $"--packageId={packageId}" };
 
             // act
-            var result = program.Run(args);
+            var result = await program.RunAsync(args);
 
             // assert
             Assert.Equal(-1, result);
@@ -34,7 +32,7 @@ namespace jaytwo.NuGetCheck.Tests
         }
 
         [Fact]
-        public void Run_returns_1_when_invalid_args()
+        public async Task Run_returns_1_when_invalid_args()
         {
             // arrange
             var mockConsole = new Mock<IConsole>();
@@ -43,14 +41,14 @@ namespace jaytwo.NuGetCheck.Tests
             var args = new[] { $"--foo=bar" };
 
             // act
-            var result = program.Run(args);
+            var result = await program.RunAsync(args);
 
             // assert
             Assert.Equal(1, result);
         }
 
         [Fact]
-        public void Run_writes_to_console_when_invalid_args()
+        public async Task Run_writes_to_console_when_invalid_args()
         {
             // arrange
             var mockConsole = new Mock<IConsole>();
@@ -59,7 +57,7 @@ namespace jaytwo.NuGetCheck.Tests
             var args = new[] { $"--foo=bar" };
 
             // act
-            var result = program.Run(args);
+            var result = await program.RunAsync(args);
 
             // assert
             Assert.Equal(1, result);

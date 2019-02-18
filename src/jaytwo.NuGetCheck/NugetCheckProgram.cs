@@ -1,9 +1,6 @@
-﻿using CommandLine;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
 using System.Threading.Tasks;
+using CommandLine;
 
 namespace jaytwo.NuGetCheck
 {
@@ -12,13 +9,18 @@ namespace jaytwo.NuGetCheck
         private readonly INugetVersionService _nugetVersionService;
         private readonly IConsole _console;
 
-        public NugetCheckProgram(INugetVersionService service, IConsole console)
+        public NugetCheckProgram()
+            : this(new NugetVersionService(), new DefaultConsole())
         {
-            _nugetVersionService = service;
+        }
+
+        internal NugetCheckProgram(INugetVersionService nugetVersionService, IConsole console)
+        {
+            _nugetVersionService = nugetVersionService;
             _console = console;
         }
 
-        public int Run(string[] args)
+        public async Task<int> RunAsync(string[] args)
         {
             ParserResult<RunOptions> parseResult;
 
@@ -31,20 +33,18 @@ namespace jaytwo.NuGetCheck
                 return 1;
             }
 
-            return parseResult.MapResult(
-                    options => RunWithOptions(options),
-                    errors => 1
-                );
+            return await parseResult.MapResult(
+                options => RunWithOptionsAsync(options),
+                errors => Task.FromResult(1)
+            );
         }
 
-        private int RunWithOptions(RunOptions options)
+        private async Task<int> RunWithOptionsAsync(RunOptions options)
         {
-            var versions = _nugetVersionService
-                .GetPackageVersionsAsync(
-                    options.PackageId,
-                    options.MinVersion,
-                    options.MaxVersion)
-                .RunSync();
+            var versions = await _nugetVersionService.GetPackageVersionsAsync(
+                packageId: options.PackageId,
+                minVersion: options.MinVersion,
+                maxVersion: options.MaxVersion);
 
             if (versions.Any())
             {
