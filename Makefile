@@ -19,6 +19,7 @@ run: build
 	dotnet run  --project ./src/jaytwo.NuGetCheck
 
 unit-test: build
+	rm -rf out/testResults
 	dotnet test ./test/jaytwo.NuGetCheck.Tests \
 		--results-directory ../../out/testResults \
 		--logger "trx;LogFileName=jaytwo.NuGetCheck.Tests.trx"
@@ -30,7 +31,8 @@ integration-test: build
 
 test: unit-test integration-test
 
-pack: clean build
+pack: build
+	rm -rf out/packed
 	cd ./src/jaytwo.NuGetCheck; \
 		dotnet pack -o ../../out/packed ${PACK_ARG}
 
@@ -62,12 +64,14 @@ docker-integration-test: docker-build
 	docker run --rm ${DOCKER_TAG} make integration-test
 
 docker-run: docker-build
-	docker build -t ${DOCKER_TAG} . --target builder
+	docker build -t ${DOCKER_TAG} . --target app
+	docker run ${DOCKER_TAG}
   
 DOCKER_PACK_BUILD_TARGET?=packer-results
 DOCKER_PACK_TAG?=${DOCKER_TAG}__pack
 DOCKER_PACK_RESULTS_NAME?=${DOCKER_TAG}__pack_${TIMESTAMP}
 docker-pack: docker-build
+	rm -rf out/packed
 	export DOCKER_PACK_BUILD_TARGET=${DOCKER_PACK_BUILD_TARGET}; \
 	export DOCKER_PACK_TAG=${DOCKER_PACK_TAG}; \
 	export DOCKER_PACK_RESULTS_NAME=${DOCKER_PACK_RESULTS_NAME}; \
