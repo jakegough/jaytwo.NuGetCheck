@@ -46,6 +46,15 @@ FROM alpine AS unit-test-results
 COPY --from=unit-test /src/out /out
 
 
+FROM builder AS integration-test
+RUN mkdir -p out/integrationTestResults \
+  && ((make integration-test) && (echo "PASS" > "out/integrationTestResults/.passed")) || (echo "FAIL" > "out/integrationTestResults/.failed")
+
+
+FROM alpine AS integration-test-results
+COPY --from=integration-test /src/out /out
+
+
 FROM builder AS publisher
 WORKDIR /src
 RUN make publish
