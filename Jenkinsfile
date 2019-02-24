@@ -1,8 +1,8 @@
 library 'JenkinsBuilderLibrary'
 
-github.username = 'jakegough'
-github.repository = 'jaytwo.NuGetCheck'
-github.tokenCredentialId = 'github-personal-access-token-jakegough'
+helper.gitHubUsername = 'jakegough'
+helper.gitHubRepository = 'jaytwo.NuGetCheck'
+helper.gitHubTokenCredentialId = 'github-personal-access-token-jakegough'
 
 def dockerhub_username = 'jakegough'
 def jenkins_credential_id_dockerhub = 'userpass-dockerhub-jakegough'
