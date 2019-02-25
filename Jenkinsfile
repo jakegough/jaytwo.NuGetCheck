@@ -17,35 +17,36 @@ node('linux && make && docker') {
             helper.updateGitHubBuildStatusInProgress();
         }
         
-        def timestamp = sh(returnStdout: true, script: "date +'%Y%m%d%H%M%S'").toString().trim()
-        
-        try {
-            stage ('Build') {
-                sh "make docker-build DOCKER_TAG_SUFFIX=-${timestamp}"
-            }
-            stage ('Unit Test') {
-                sh "make docker-unit-test DOCKER_TAG_SUFFIX=-${timestamp}"
-            }
-            stage ('Integration Test') {
-                sh "make docker-integration-test DOCKER_TAG_SUFFIX=-${timestamp}"
-            }
-            stage ('Pack') {
-                if(env.BRANCH_NAME == 'master'){
-                    sh "make docker-pack DOCKER_TAG_SUFFIX=-${timestamp}"
-                } else {
-                    sh "make docker-pack-beta DOCKER_TAG_SUFFIX=-${timestamp}"
+        def timestamp = sh(returnStdout: true, script: "date +'%Y%m%d%H%M%S'").toString().trim()        
+        withEnv(["DOCKER_TAG_SUFFIX=-${timestamp}"]) {
+            try {
+                stage ('Build') {
+                    sh "make docker-build"
+                }
+                stage ('Unit Test') {
+                    sh "make docker-unit-test"
+                }
+                stage ('Integration Test') {
+                    sh "make docker-integration-test"
+                }
+                stage ('Pack') {
+                    if(env.BRANCH_NAME == 'master'){
+                        sh "make docker-pack"
+                    } else {
+                        sh "make docker-pack-beta"
+                    }
+                }
+                if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop'){
+                    stage ('Publish') {
+                        sh "make docker-publish"
+                    }
                 }
             }
-            if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop'){
-                stage ('Publish') {
-                    sh "make docker-publish DOCKER_TAG_SUFFIX=-${timestamp}"
-                }
+            finally {
+                // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
+                sh "make docker-cleanup"
+                xunit tools: [MSTest(pattern: 'out/testResults/**/*.trx')]
             }
-        }
-        finally {
-            // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
-            sh "make docker-cleanup DOCKER_TAG_SUFFIX=-${timestamp}"
-            xunit tools: [MSTest(pattern: 'out/testResults/**/*.trx')]
         }
         stage('Set Success') {
             helper.updateGitHubBuildStatusSuccessful();
