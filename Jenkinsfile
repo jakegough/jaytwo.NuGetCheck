@@ -2,7 +2,8 @@ library 'JenkinsBuilderLibrary'
 
 helper.gitHubUsername = 'jakegough'
 helper.gitHubRepository = 'jaytwo.NuGetCheck'
-helper.gitHubTokenCredentialId = 'github-personal-access-token-jakegough'
+helper.gitHubTokenCredentialsId = 'github-personal-access-token-jakegough'
+helper.nuGetCredentialsId = 'nuget-org-jaytwo'
 
 def dockerhub_username = 'jakegough'
 def jenkins_credential_id_dockerhub = 'userpass-dockerhub-jakegough'
@@ -38,7 +39,7 @@ node('linux && make && docker') {
                 }
                 if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop'){
                     stage ('Publish') {
-                        sh "make docker-publish"
+                        helper.pushNugetPackage('out/packed')
                     }
                 }
             }
