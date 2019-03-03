@@ -1,4 +1,5 @@
-TIMESTAMP=$(shell date +'%Y%m%d%H%M%S')
+TIMESTAMP?=$(shell date +'%Y%m%d%H%M%S')
+DOCKER_TAG?=jaytwonugetcheck
 
 default: build
 
@@ -43,14 +44,16 @@ integration-test: publish
 		./integration-tests.sh
 
 test: unit-test integration-test
-    
-DOCKER_TAG_PREFIX?=jaytwonugetcheck
-DOCKER_TAG?=${DOCKER_TAG_PREFIX}${DOCKER_TAG_SUFFIX}
+
+docker-image:
+	docker build -t ${DOCKER_TAG} .
+
+DOCKER_BUILDER_TAG?=${DOCKER_TAG}__builder
 docker-build:
-	docker build -t ${DOCKER_TAG} . --target builder
+	docker build -t ${DOCKER_BUILDER_TAG} . --target builder
   
 docker-test: docker-build
-	docker run --rm ${DOCKER_TAG} make test
+	docker run --rm ${DOCKER_BUILDER_TAG} make test
 
 DOCKER_UNIT_TEST_TAG?=${DOCKER_TAG}__unit_test_results
 DOCKER_UNIT_TEST_RESULTS_NAME?=${DOCKER_TAG}__unit_test_results_${TIMESTAMP}

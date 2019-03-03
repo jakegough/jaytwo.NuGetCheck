@@ -60,15 +60,15 @@ WORKDIR /src
 RUN make publish
 
 
-FROM dotnet-runtime AS app
-WORKDIR /app
-COPY --from=publisher /src/out/published /app
-ENTRYPOINT ["dotnet", "jaytwo.NuGetCheck.dll"]
-
-
 FROM dotnet-sdk AS tooldemo
 WORKDIR /root
 ENV PATH="${PATH}:/root/.dotnet/tools"
 COPY container.nuget.config /nuget.config
 COPY --from=packer-results /out/packed/* /nupkgs/
 RUN dotnet tool install -g jaytwo.NuGetCheck
+
+
+FROM dotnet-runtime AS app
+WORKDIR /app
+COPY --from=publisher /src/out/published /app
+ENTRYPOINT ["dotnet", "jaytwo.NuGetCheck.dll"]

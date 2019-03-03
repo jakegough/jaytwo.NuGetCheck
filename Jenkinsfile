@@ -4,20 +4,17 @@ helper.gitHubUsername = 'jakegough'
 helper.gitHubRepository = 'jaytwo.NuGetCheck'
 helper.gitHubTokenCredentialsId = 'github-personal-access-token-jakegough'
 helper.nuGetCredentialsId = 'nuget-org-jaytwo'
+helper.dockerImageName = 'jaytwo.nugetcheck'
+helper.dockerRegistry = null // null for docker hub
 helper.dockerRegistryCredentialsId = 'userpass-dockerhub-jakegough'
 helper.cleanWsExcludePattern = 'out/testResults/**'
 
-def registryImage = 'jakegough/jaytwo.nugetcheck'
-def dockerTagPrefix = 'jaytwo.nugetcheck'
-
 helper.run('linux && make && docker', {
-    def timestamp = sh(returnStdout: true, script: "date +'%Y%m%d%H%M%S'").toString().trim()
-    def dockerTag = "${dockerTagPrefix}-${timestamp}"
-    def registryImageBeta = "${registryImage}:beta"
-    def registryImagePrerelease = "${registryImageBeta}-${timestamp}"
-
-    withEnv(["DOCKER_TAG=${dockerTag}"]) {
-        try {
+    def timestamp = helper.getTimestamp()
+    def dockerLocalTag = "__${helper.dockerImageName}-${timestamp}"
+    
+    try {
+        withEnv(["DOCKER_TAG=${dockerLocalTag}", "TIMESTAMP=${timestamp}"]) {
             stage ('Build') {
                 sh "make docker-build"
             }
@@ -35,28 +32,43 @@ helper.run('linux && make && docker', {
                 }
             }
             if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop'){
-                stage ('Publish') {
+                stage ('Publish NuGet') {
                     helper.pushNugetPackage('out/packed')
                 }
                 
                 stage ('Publish Docker') {                        
-                    sh "make docker"
+                    sh "make docker-image"
+                    
+                    helper.dockerLogin()
+                    
+                    def dockerRegistryImage = helper.getDockerRegistryImageName()
+                    
                     if(env.BRANCH_NAME == 'master'){
-                        helper.pushDockerImage(dockerTag, registryImage)
+                        helper.tagDockerImage(dockerLocalTag, dockerRegistryImage)
+                        helper.pushDockerImage(dockerRegistryImage)
+                        helper.removeDockerImage(dockerRegistryImage)
                     } else {
-                        helper.tagDockerImage(dockerTag, registryImagePrerelease)
-                        helper.pushDockerImage(dockerTag, registryImagePrerelease)
+                        def dockerRegistryImageBeta = "${dockerRegistryImage}:beta"
+                        def dockerRegistryImagePrerelease = "${dockerRegistryImageBeta}-${timestamp}"
                         
-                        helper.tagDockerImage(dockerTag, registryImageBeta)
-                        helper.pushDockerImage(dockerTag, registryImageBeta)
-                    }                        
+                        helper.tagDockerImage(dockerLocalTag, dockerRegistryImageBeta)
+                        helper.tagDockerImage(dockerLocalTag, dockerRegistryImagePrerelease)
+                        
+                        helper.pushDockerImage(dockerRegistryImageBeta)
+                        helper.pushDockerImage(dockerRegistryImagePrerelease)
+                        
+                        helper.removeDockerImage(dockerRegistryImageBeta)
+                        helper.removeDockerImage(dockerRegistryImagePrerelease)
+                    }
+                    
+                    helper.removeDockerImage(dockerLocalTag)
                 }
             }
         }
-        finally {
-            // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
-            sh "make docker-cleanup"
-            xunit tools: [MSTest(pattern: 'out/testResults/**/*.trx')]
-        }
+    }
+    finally {
+        // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
+        sh "make docker-cleanup"
+        xunit tools: [MSTest(pattern: 'out/testResults/**/*.trx')]
     }
 })
