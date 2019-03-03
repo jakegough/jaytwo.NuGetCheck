@@ -11,7 +11,7 @@ helper.cleanWsExcludePattern = 'out/testResults/**'
 
 helper.run('linux && make && docker', {
     def timestamp = helper.getTimestamp()
-    def dockerLocalTag = "__${helper.dockerImageName}-${timestamp}"
+    def dockerLocalTag = "jenkins__${helper.dockerImageName}__${timestamp}"
     
     try {
         withEnv(["DOCKER_TAG=${dockerLocalTag}", "TIMESTAMP=${timestamp}"]) {
