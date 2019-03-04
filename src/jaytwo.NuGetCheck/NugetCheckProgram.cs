@@ -1,56 +1,79 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
-using CommandLine;
+using Microsoft.Extensions.CommandLineUtils;
+using NuGet.Versioning;
 
 namespace jaytwo.NuGetCheck
 {
     public class NugetCheckProgram
     {
-        private readonly INugetVersionService _nugetVersionService;
+        private readonly INugetVersionSource _nugetVersionSource;
         private readonly IConsole _console;
 
         public NugetCheckProgram()
-            : this(new NugetVersionService(), new DefaultConsole())
+            : this(new NugetVersionSource(), new DefaultConsole())
         {
         }
 
-        internal NugetCheckProgram(INugetVersionService nugetVersionService, IConsole console)
+        internal NugetCheckProgram(INugetVersionSource nugetVersionSource, IConsole console)
         {
-            _nugetVersionService = nugetVersionService;
+            _nugetVersionSource = nugetVersionSource;
             _console = console;
         }
 
-        public async Task<int> RunAsync(string[] args)
+        public int Run(string[] args)
         {
-            ParserResult<RunOptions> parseResult;
+            var app = new CommandLineApplication();
+            app.Name = "nugetcheck";
+            app.HelpOption("-?|-h|--help");
+
+            var packageIdArgument = app.Argument("[package id]", "NuGet package id to query against");
+            var lessThanOption = app.Option("-lt <version>", "Show only versions less than this value", CommandOptionType.SingleValue);
+            var lessThanOrEqualToOption = app.Option("-lte <version>", "Show only versions less or equal to than this value", CommandOptionType.SingleValue);
+            var greaterThanOption = app.Option("-gt <version>", "Show only versions greater than this value", CommandOptionType.SingleValue);
+            var greaterThanOrEqualToOption = app.Option("-gte <version>", "Show only versions greater or equal to than this value", CommandOptionType.SingleValue);
+            var sameMajorVersionOption = app.Option("--same-major", "foo", CommandOptionType.NoValue);
+            var sameMinorVersionOption = app.Option("--same-minor", "foo", CommandOptionType.NoValue);
+
+            app.OnExecute(() =>
+            {
+                return RunWithOptionsAsync(new RunOptions()
+                {
+                    PackageId = packageIdArgument.Value,
+                    GreaterThan = greaterThanOption.HasValue() ? greaterThanOption.Value() : null,
+                    GreaterThanOrEqualTo = greaterThanOrEqualToOption.HasValue() ? greaterThanOrEqualToOption.Value() : null,
+                    LessThan = lessThanOption.HasValue() ? lessThanOption.Value() : null,
+                    LessThanOrEqualTo = lessThanOrEqualToOption.HasValue() ? lessThanOrEqualToOption.Value() : null,
+                    SameMajorVersion = sameMajorVersionOption.HasValue(),
+                    SameMinorVersion = sameMinorVersionOption.HasValue(),
+                });
+            });
 
             try
             {
-                parseResult = Parser.Default.ParseArguments<RunOptions>(args);
+                return app.Execute(args);
             }
-            catch
+            catch (Exception ex)
             {
+                _console.WriteLine(ex.Message);
                 return 1;
             }
 
-            return await parseResult.MapResult(
-                options => RunWithOptionsAsync(options),
-                errors => Task.FromResult(1)
-            );
         }
 
         private async Task<int> RunWithOptionsAsync(RunOptions options)
         {
-            var versions = await _nugetVersionService.GetPackageVersionsAsync(
-                packageId: options.PackageId,
-                minVersion: options.MinVersion,
-                maxVersion: options.MaxVersion);
+            var allVersions = await _nugetVersionSource.GetPackageVersionsAsync(options.PackageId);
 
-            if (versions.Any())
+            var filteredVersions = ApplyFiltersFromOptions(allVersions, options).ToList();
+
+            if (filteredVersions.Any())
             {
-                foreach (var version in versions)
+                foreach (var version in filteredVersions)
                 {
-                    _console.WriteLine(version);
+                    _console.WriteLine(version.ToString());
                 }
 
                 return 0;
@@ -60,6 +83,59 @@ namespace jaytwo.NuGetCheck
                 _console.WriteLine("No results.");
                 return -1;
             }
+        }
+
+        internal static IEnumerable<NuGetVersion> ApplyFiltersFromOptions(IEnumerable<NuGetVersion> versions, RunOptions options)
+        {
+            IEnumerable<NuGetVersion> result = new List<NuGetVersion>(versions);
+
+            if (NuGetVersion.TryParse(options.GreaterThan, out NuGetVersion greaterThanVersion))
+            {
+                result = result.Where(x => x > greaterThanVersion);
+                result = ApplyMajorMinorVersionFilterFromOptions(result, greaterThanVersion, options);
+            }
+
+            if (NuGetVersion.TryParse(options.GreaterThanOrEqualTo, out NuGetVersion greaterThanOrEqualToVersion))
+            {
+                result = result.Where(x => x >= greaterThanOrEqualToVersion);
+                result = ApplyMajorMinorVersionFilterFromOptions(result, greaterThanOrEqualToVersion, options);
+            }
+
+            if (NuGetVersion.TryParse(options.LessThan, out NuGetVersion lessThanVersion))
+            {
+                result = result.Where(x => x < lessThanVersion);
+                result = ApplyMajorMinorVersionFilterFromOptions(result, lessThanVersion, options);
+            }
+
+            if (NuGetVersion.TryParse(options.LessThanOrEqualTo, out NuGetVersion lessThanOrEqualToVersion))
+            {
+                result = result.Where(x => x <= lessThanOrEqualToVersion);
+                result = ApplyMajorMinorVersionFilterFromOptions(result, lessThanOrEqualToVersion, options);
+            }
+
+            return result;
+        }
+
+        internal static IEnumerable<NuGetVersion> ApplyMajorMinorVersionFilterFromOptions(IEnumerable<NuGetVersion> versions, NuGetVersion version, RunOptions options)
+        {
+            return ApplyMajorMinorVersionFilter(versions, version, options.SameMinorVersion, options.SameMajorVersion);
+        }
+
+        internal static IEnumerable<NuGetVersion> ApplyMajorMinorVersionFilter(IEnumerable<NuGetVersion> versions, NuGetVersion version, bool? sameMinorVersion, bool? sameMajorVersion)
+        {
+            IEnumerable<NuGetVersion> result = new List<NuGetVersion>(versions);
+
+            if (sameMinorVersion ?? false)
+            {
+                result = result.WhereMajorMinorVersionEqualTo(version);
+            }
+
+            if (sameMajorVersion ?? false)
+            {
+                result = result.WhereMajorVersionEqualTo(version);
+            }
+
+            return result;
         }
     }
 }

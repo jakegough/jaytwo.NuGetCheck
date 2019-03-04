@@ -4,6 +4,6 @@ namespace jaytwo.NuGetCheck
 {
     public class Program
     {
-        public static Task<int> Main(string[] args) => new NugetCheckProgram().RunAsync(args);
+        public static int Main(string[] args) => new NugetCheckProgram().Run(args);
     }
 }

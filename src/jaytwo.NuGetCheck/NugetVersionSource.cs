@@ -11,21 +11,21 @@ using NuGet.Versioning;
 
 namespace jaytwo.NuGetCheck
 {
-    public class NugetVersionService : INugetVersionService
+    public class NugetVersionSource : INugetVersionSource
     {
         private readonly string _directory;
 
-        public NugetVersionService()
+        public NugetVersionSource()
             : this(Environment.CurrentDirectory)
         {
         }
 
-        internal NugetVersionService(string directory)
+        internal NugetVersionSource(string directory)
         {
             _directory = directory;
         }
 
-        public async Task<IList<string>> GetPackageVersionsAsync(string packageId, string minVersion, string maxVersion)
+        public async Task<IList<NuGetVersion>> GetPackageVersionsAsync(string packageId)
         {
             var repo = GetRepository();
             var findResource = await repo.GetResourceAsync<FindPackageByIdResource>();
@@ -35,19 +35,8 @@ namespace jaytwo.NuGetCheck
                 NullLogger.Instance,
                 CancellationToken.None);
 
-            if (SemanticVersion.TryParse(minVersion, out SemanticVersion minSemanticVersion))
-            {
-                packageVersions = packageVersions.Where(x => x >= minSemanticVersion);
-            }
-
-            if (SemanticVersion.TryParse(maxVersion, out SemanticVersion maxSemanticVersion))
-            {
-                packageVersions = packageVersions.Where(x => x < maxSemanticVersion);
-            }
-
             var result = packageVersions
                 .OrderByDescending(x => x)
-                .Select(x => x.ToString())
                 .ToList();
 
             return result;
