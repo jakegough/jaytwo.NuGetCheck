@@ -67,8 +67,9 @@ helper.run('linux && make && docker', {
         }
     }
     finally {
-        // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
-        sh "make docker-cleanup"
         xunit tools: [MSTest(pattern: 'out/testResults/**/*.trx')]
+        cleanWs()
+        // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
+        sh "make docker-cleanup"        
     }
 })
