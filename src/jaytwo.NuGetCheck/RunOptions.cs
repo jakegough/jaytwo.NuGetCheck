@@ -4,6 +4,8 @@
     {
         public string PackageId { get; set; }
 
+        public string EqualTo { get; set; }
+
         public string GreaterThan { get; set; }
 
         public string GreaterThanOrEqualTo { get; set; }

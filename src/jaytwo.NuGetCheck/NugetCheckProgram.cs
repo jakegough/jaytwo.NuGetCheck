@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.CommandLineUtils;
+using NuGet.Packaging;
 using NuGet.Versioning;
 
 namespace jaytwo.NuGetCheck
@@ -36,18 +37,22 @@ namespace jaytwo.NuGetCheck
             app.Error = _standardError;
 
             var packageIdArgument = app.Argument("[package id]", "NuGet package id to query against");
-            var lessThanOption = app.Option("-lt <version>", "Show only versions less than this value", CommandOptionType.SingleValue);
-            var lessThanOrEqualToOption = app.Option("-lte <version>", "Show only versions less or equal to than this value", CommandOptionType.SingleValue);
-            var greaterThanOption = app.Option("-gt <version>", "Show only versions greater than this value", CommandOptionType.SingleValue);
-            var greaterThanOrEqualToOption = app.Option("-gte <version>", "Show only versions greater or equal to than this value", CommandOptionType.SingleValue);
-            var sameMajorVersionOption = app.Option("--same-major", "foo", CommandOptionType.NoValue);
-            var sameMinorVersionOption = app.Option("--same-minor", "foo", CommandOptionType.NoValue);
+
+            var equalToOption = app.Option("-eq <version-or-file>", "Show only versions equal to this value", CommandOptionType.SingleValue);
+            var lessThanOption = app.Option("-lt <version-or-file>", "Show only versions less than this value", CommandOptionType.SingleValue);
+            var lessThanOrEqualToOption = app.Option("-lte <version-or-file>", "Show only versions less or equal to than this value", CommandOptionType.SingleValue);
+            var greaterThanOption = app.Option("-gt <version-or-file>", "Show only versions greater than this value", CommandOptionType.SingleValue);
+            var greaterThanOrEqualToOption = app.Option("-gte <version-or-file>", "Show only versions greater or equal to than this value", CommandOptionType.SingleValue);
+
+            var sameMajorVersionOption = app.Option("--same-major", "Show only versions with the same major version as specified in options", CommandOptionType.NoValue);
+            var sameMinorVersionOption = app.Option("--same-minor", "Show only versions with the same major and minor versions as specified in options", CommandOptionType.NoValue);
 
             app.OnExecute(() =>
             {
                 return RunWithOptionsAsync(new RunOptions()
                 {
                     PackageId = packageIdArgument.Value,
+                    EqualTo = equalToOption.HasValue() ? equalToOption.Value() : null,
                     GreaterThan = greaterThanOption.HasValue() ? greaterThanOption.Value() : null,
                     GreaterThanOrEqualTo = greaterThanOrEqualToOption.HasValue() ? greaterThanOrEqualToOption.Value() : null,
                     LessThan = lessThanOption.HasValue() ? lessThanOption.Value() : null,
@@ -94,10 +99,24 @@ namespace jaytwo.NuGetCheck
         {
             IEnumerable<NuGetVersion> result = new List<NuGetVersion>(versions);
 
+            if (NuGetVersion.TryParse(options.EqualTo, out NuGetVersion equalToVersion))
+            {
+                result = result.Where(x => x == equalToVersion);
+            }
+            else if (TryLoadNugetVersion(options.EqualTo, out NuGetVersion fileVersion))
+            {
+                result = result.Where(x => x == fileVersion);
+            }
+
             if (NuGetVersion.TryParse(options.GreaterThan, out NuGetVersion greaterThanVersion))
             {
                 result = result.Where(x => x > greaterThanVersion);
                 result = ApplyMajorMinorVersionFilterFromOptions(result, greaterThanVersion, options);
+            }
+            else if (TryLoadNugetVersion(options.GreaterThan, out NuGetVersion fileVersion))
+            {
+                result = result.Where(x => x > fileVersion);
+                result = ApplyMajorMinorVersionFilterFromOptions(result, fileVersion, options);
             }
 
             if (NuGetVersion.TryParse(options.GreaterThanOrEqualTo, out NuGetVersion greaterThanOrEqualToVersion))
@@ -105,17 +124,32 @@ namespace jaytwo.NuGetCheck
                 result = result.Where(x => x >= greaterThanOrEqualToVersion);
                 result = ApplyMajorMinorVersionFilterFromOptions(result, greaterThanOrEqualToVersion, options);
             }
+            else if (TryLoadNugetVersion(options.GreaterThanOrEqualTo, out NuGetVersion fileVersion))
+            {
+                result = result.Where(x => x >= fileVersion);
+                result = ApplyMajorMinorVersionFilterFromOptions(result, fileVersion, options);
+            }
 
             if (NuGetVersion.TryParse(options.LessThan, out NuGetVersion lessThanVersion))
             {
                 result = result.Where(x => x < lessThanVersion);
                 result = ApplyMajorMinorVersionFilterFromOptions(result, lessThanVersion, options);
             }
+            else if (TryLoadNugetVersion(options.LessThan, out NuGetVersion fileVersion))
+            {
+                result = result.Where(x => x < fileVersion);
+                result = ApplyMajorMinorVersionFilterFromOptions(result, fileVersion, options);
+            }
 
             if (NuGetVersion.TryParse(options.LessThanOrEqualTo, out NuGetVersion lessThanOrEqualToVersion))
             {
                 result = result.Where(x => x <= lessThanOrEqualToVersion);
                 result = ApplyMajorMinorVersionFilterFromOptions(result, lessThanOrEqualToVersion, options);
+            }
+            else if (TryLoadNugetVersion(options.LessThanOrEqualTo, out NuGetVersion fileVersion))
+            {
+                result = result.Where(x => x <= fileVersion);
+                result = ApplyMajorMinorVersionFilterFromOptions(result, fileVersion, options);
             }
 
             return result;
@@ -141,6 +175,28 @@ namespace jaytwo.NuGetCheck
             }
 
             return result;
+        }
+
+        internal static bool TryLoadNugetVersion(string path, out NuGetVersion version)
+        {
+            try
+            {
+                var file = new FileInfo(path);
+                if (file.Exists)
+                {
+                    using (var archive = new PackageArchiveReader(file.FullName))
+                    {
+                        version = archive.GetIdentity().Version;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            version = null;
+            return false;
         }
     }
 }

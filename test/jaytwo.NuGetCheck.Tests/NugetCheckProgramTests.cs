@@ -78,7 +78,22 @@ namespace jaytwo.NuGetCheck.Tests
             }
         }
 
+        [Fact]
+        public void TryLoadNugetVersion_works_on_nupkg()
+        {
+            // arrange
+            var testNupkg = "TestData/xunit.2.1.0-rc1-build3168.nupkg";
+
+            // act
+            var result = NugetCheckProgram.TryLoadNugetVersion(testNupkg, out NuGetVersion version);
+
+            // assert
+            Assert.True(result);
+            Assert.Equal(new NuGetVersion("2.1.0-rc1-build3168"), version);
+        }
+
         [Theory]
+        [InlineData(new[] { "abc", "-eq", "1.1.0" }, new[] { "1.1.0" })]
         [InlineData(new[] { "abc", "-lt", "1.1.0" }, new[] { "0.1.0-beta1", "0.1.0-beta2", "0.1.0", "1.0.0-beta", "1.0.0", "1.1.0-beta" })]
         [InlineData(new[] { "abc", "-lt", "1.1.0", "--same-major" }, new[] { "1.0.0-beta", "1.0.0", "1.1.0-beta" })]
         [InlineData(new[] { "abc", "-lt", "1.1.0", "--same-minor" }, new[] { "1.1.0-beta" })]
@@ -109,6 +124,55 @@ namespace jaytwo.NuGetCheck.Tests
                     new NuGetVersion("2.0.0"),
                     new NuGetVersion("2.1.0-beta"),
                     new NuGetVersion("2.1.0"),
+                    new NuGetVersion("3.0.0"),
+                    new NuGetVersion("3.1.0-beta"),
+                    new NuGetVersion("3.1.0"),
+                });
+
+            using (var mockStandardOut = new StringWriter())
+            using (var mockStandardError = new StringWriter())
+            {
+                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+
+                // act
+                var outputCode = program.Run(args);
+
+                // assert
+                Assert.Equal(0, outputCode);
+                var outputLines = mockStandardOut.ToString().Split("\n").Where(x => !string.IsNullOrEmpty(x)).Select(x => x.Trim()).ToArray();
+                Assert.Equal(expectedVersions, outputLines);
+            }
+        }
+
+
+        [Theory]
+        [InlineData(new[] { "xunit", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-major" }, new[] { "2.0.0", "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-minor" }, new[] { "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-major" }, new[] { "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-minor" }, new[] { "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-major" }, new[] { "2.1.0", "2.2.0" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-minor" }, new[] { "2.1.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-major" }, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-minor" }, new[] { "2.1.0-rc1-build3168", "2.1.0" })]
+        public void Run_filters_properly_file(string[] args, string[] expectedVersions)
+        {
+            // arrange
+            var mockNugetVersionService = new Mock<INugetVersionSource>();
+            mockNugetVersionService
+                .Setup(x => x.GetPackageVersionsAsync("xunit"))
+                .ReturnsAsync(new NuGetVersion[] {
+                    new NuGetVersion("0.1.0"),
+                    new NuGetVersion("1.0.0"),
+                    new NuGetVersion("2.0.0"),
+                    new NuGetVersion("2.1.0-beta"),
+                    new NuGetVersion("2.1.0-rc1-build3168"),
+                    new NuGetVersion("2.1.0"),
+                    new NuGetVersion("2.2.0"),
                     new NuGetVersion("3.0.0"),
                     new NuGetVersion("3.1.0-beta"),
                     new NuGetVersion("3.1.0"),
