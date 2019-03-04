@@ -1,4 +1,4 @@
-library 'JenkinsBuilderLibrary'
+library 'JenkinsBuilderLibrary@xunit'
 
 helper.gitHubUsername = 'jakegough'
 helper.gitHubRepository = 'jaytwo.NuGetCheck'
@@ -7,7 +7,7 @@ helper.nuGetCredentialsId = 'nuget-org-jaytwo'
 helper.dockerImageName = 'jaytwo.nugetcheck'
 helper.dockerRegistry = null // null for docker hub
 helper.dockerRegistryCredentialsId = 'userpass-dockerhub-jakegough'
-helper.cleanWsExcludePattern = 'out/testResults/**'
+helper.xunitTestResultsPattern = 'out/testResults/**/*.trx'
 
 helper.run('linux && make && docker', {
     def timestamp = helper.getTimestamp()
@@ -67,7 +67,6 @@ helper.run('linux && make && docker', {
         }
     }
     finally {
-        xunit tools: [MSTest(pattern: 'out/testResults/**/*.trx')]
         // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
         sh "make docker-cleanup"        
     }
