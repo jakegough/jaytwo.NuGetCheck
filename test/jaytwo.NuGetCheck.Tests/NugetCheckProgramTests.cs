@@ -82,7 +82,7 @@ namespace jaytwo.NuGetCheck.Tests
         public void TryLoadNugetVersion_works_on_nupkg()
         {
             // arrange
-            var testNupkg = "TestData/xunit.2.1.0-rc1-build3168.nupkg";
+            var testNupkg = "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme";
 
             // act
             var result = NugetCheckProgram.TryLoadNugetVersion(testNupkg, out NuGetVersion version);
@@ -146,19 +146,19 @@ namespace jaytwo.NuGetCheck.Tests
 
 
         [Theory]
-        [InlineData(new[] { "xunit", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "2.1.0-rc1-build3168" })]
-        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta" })]
-        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-major" }, new[] { "2.0.0", "2.1.0-beta" })]
-        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-minor" }, new[] { "2.1.0-beta" })]
-        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
-        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-major" }, new[] { "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
-        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-minor" }, new[] { "2.1.0-beta", "2.1.0-rc1-build3168" })]
-        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
-        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-major" }, new[] { "2.1.0", "2.2.0" })]
-        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-minor" }, new[] { "2.1.0" })]
-        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg" }, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
-        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-major" }, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0" })]
-        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg", "--same-minor" }, new[] { "2.1.0-rc1-build3168", "2.1.0" })]
+        [InlineData(new[] { "xunit", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, new[] { "2.0.0", "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, new[] { "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, new[] { "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, new[] { "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, new[] { "2.1.0", "2.2.0" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, new[] { "2.1.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, new[] { "2.1.0-rc1-build3168", "2.1.0" })]
         public void Run_filters_properly_file(string[] args, string[] expectedVersions)
         {
             // arrange

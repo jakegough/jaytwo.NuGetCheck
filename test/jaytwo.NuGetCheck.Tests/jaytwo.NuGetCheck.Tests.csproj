@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="TestData\xunit.2.1.0-rc1-build3168.nupkg">
+    <None Update="TestData\xunit.2.1.0-rc1-build3168.nupkg.keepme">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
