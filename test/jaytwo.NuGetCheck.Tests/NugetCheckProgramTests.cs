@@ -16,123 +16,116 @@ namespace jaytwo.NuGetCheck.Tests
             // arrange
             var packageId = "anything";
 
-            var mockConsole = new Mock<IConsole>();
-
             var mockNugetVersionService = new Mock<INugetVersionSource>();
             mockNugetVersionService
                 .Setup(x => x.GetPackageVersionsAsync(packageId))
                 .ReturnsAsync(new NuGetVersion[] { });
 
-            var program = new NugetCheckProgram(mockNugetVersionService.Object, mockConsole.Object);
-            var args = new[] { packageId };
+            using (var mockStandardOut = new StringWriter())
+            using (var mockStandardError = new StringWriter())
+            {
+                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var args = new[] { packageId };
 
-            // act
-            var result = program.Run(args);
+                // act
+                var result = program.Run(args);
 
-            // assert
-            Assert.Equal(-1, result);
-            mockNugetVersionService.VerifyAll();
+                // assert
+                Assert.Equal(-1, result);
+                mockNugetVersionService.VerifyAll();
+            }
         }
 
         [Fact]
         public void Run_returns_1_when_invalid_args()
         {
             // arrange
-            var mockConsole = new Mock<IConsole>();
             var mockNugetVersionService = new Mock<INugetVersionSource>();
-            var program = new NugetCheckProgram(mockNugetVersionService.Object, mockConsole.Object);
-            var args = new[] { $"--foo=bar" };
 
-            // act
-            var result = program.Run(args);
+            using (var mockStandardOut = new StringWriter())
+            using (var mockStandardError = new StringWriter())
+            {
+                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var args = new[] { $"--foo=bar" };
 
-            // assert
-            Assert.Equal(1, result);
+                // act
+                var result = program.Run(args);
+
+                // assert
+                Assert.Equal(1, result);
+            }
         }
 
         [Fact]
         public void Run_writes_to_console_when_invalid_args()
         {
             // arrange
-            var mockConsole = new Mock<IConsole>();
-            mockConsole.Setup(x => x.WriteLine(It.Is<string>(param => param.Contains("--foo=bar"))));
+            using (var mockStandardOut = new StringWriter())
+            using (var mockStandardError = new StringWriter())
+            {
+                var mockNugetVersionService = new Mock<INugetVersionSource>();
+                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var args = new[] { $"--foo=bar" };
 
-            var mockNugetVersionService = new Mock<INugetVersionSource>();
-            var program = new NugetCheckProgram(mockNugetVersionService.Object, mockConsole.Object);
-            var args = new[] { $"--foo=bar" };
+                // act
+                var result = program.Run(args);
 
-            // act
-            var result = program.Run(args);
+                // assert
+                Assert.Equal(1, result);
 
-            // assert
-            Assert.Equal(1, result);
-            mockConsole.VerifyAll();
+                var output = mockStandardError.ToString();
+                Assert.Contains("--foo=bar", output);
+            }
         }
 
         [Theory]
-        [InlineData("abc", "-lte", "0.1.0")]
-        [InlineData("abc", "-lte", "0.1.0", "--same-major")]
-        [InlineData("abc", "-lte", "0.1.0", "--same-minor")]
-        [InlineData("abc", "-gte", "1.0.0", "-lt", "2.0.0")]
-        [InlineData("abc", "-gte", "1.0.0", "-lte", "1.0.0")]
-        public void Run_filters_properly(params string[] args)
+        [InlineData(new[] { "abc", "-lt", "1.1.0" }, new[] { "0.1.0-beta1", "0.1.0-beta2", "0.1.0", "1.0.0-beta", "1.0.0", "1.1.0-beta" })]
+        [InlineData(new[] { "abc", "-lt", "1.1.0", "--same-major" }, new[] { "1.0.0-beta", "1.0.0", "1.1.0-beta" })]
+        [InlineData(new[] { "abc", "-lt", "1.1.0", "--same-minor" }, new[] { "1.1.0-beta" })]
+        [InlineData(new[] { "abc", "-lte", "1.1.0" }, new[] { "0.1.0-beta1", "0.1.0-beta2", "0.1.0", "1.0.0-beta", "1.0.0", "1.1.0-beta", "1.1.0" })]
+        [InlineData(new[] { "abc", "-lte", "1.1.0", "--same-major" }, new[] { "1.0.0-beta", "1.0.0", "1.1.0-beta", "1.1.0" })]
+        [InlineData(new[] { "abc", "-lte", "1.1.0", "--same-minor" }, new[] { "1.1.0-beta", "1.1.0" })]
+        [InlineData(new[] { "abc", "-gt", "2.0.0-beta" }, new[] { "2.0.0", "2.1.0-beta", "2.1.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "abc", "-gt", "2.0.0-beta", "--same-major" }, new[] { "2.0.0", "2.1.0-beta", "2.1.0" })]
+        [InlineData(new[] { "abc", "-gt", "2.0.0-beta", "--same-minor" }, new[] { "2.0.0" })]
+        [InlineData(new[] { "abc", "-gte", "2.0.0-beta" }, new[] { "2.0.0-beta", "2.0.0", "2.1.0-beta", "2.1.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "abc", "-gte", "2.0.0-beta", "--same-major" }, new[] { "2.0.0-beta", "2.0.0", "2.1.0-beta", "2.1.0" })]
+        [InlineData(new[] { "abc", "-gte", "2.0.0-beta", "--same-minor" }, new[] { "2.0.0-beta", "2.0.0" })]
+        public void Run_filters_properly(string[] args, string[] expectedVersions)
         {
-            using (var stringWriter = new StringWriter())
+            // arrange
+            var mockNugetVersionService = new Mock<INugetVersionSource>();
+            mockNugetVersionService
+                .Setup(x => x.GetPackageVersionsAsync("abc"))
+                .ReturnsAsync(new NuGetVersion[] {
+                    new NuGetVersion("0.1.0-beta1"),
+                    new NuGetVersion("0.1.0-beta2"),
+                    new NuGetVersion("0.1.0"),
+                    new NuGetVersion("1.0.0-beta"),
+                    new NuGetVersion("1.0.0"),
+                    new NuGetVersion("1.1.0-beta"),
+                    new NuGetVersion("1.1.0"),
+                    new NuGetVersion("2.0.0-beta"),
+                    new NuGetVersion("2.0.0"),
+                    new NuGetVersion("2.1.0-beta"),
+                    new NuGetVersion("2.1.0"),
+                    new NuGetVersion("3.0.0"),
+                    new NuGetVersion("3.1.0-beta"),
+                    new NuGetVersion("3.1.0"),
+                });
+
+            using (var mockStandardOut = new StringWriter())
+            using (var mockStandardError = new StringWriter())
             {
-                var mockConsole = new Mock<IConsole>();
-                mockConsole
-                    .Setup(x => x.WriteLine(It.IsAny<string>()))
-                    .Callback(stringWriter.WriteLine);
-
-                var mockNugetVersionService = new Mock<INugetVersionSource>();
-                mockNugetVersionService
-                    .Setup(x => x.GetPackageVersionsAsync("abc"))
-                    .ReturnsAsync(new NuGetVersion[] {
-                        new NuGetVersion("0.1.0-beta1"),
-                        new NuGetVersion("0.1.0-beta2"),
-                        new NuGetVersion("0.1.0"),
-                        new NuGetVersion("0.2.0-beta1"),
-                        new NuGetVersion("0.2.0-beta2"),
-                        new NuGetVersion("0.2.0"),
-                        new NuGetVersion("1.0.0-beta1"),
-                        new NuGetVersion("1.0.0-beta2"),
-                        new NuGetVersion("1.0.0"),
-                        new NuGetVersion("1.1.0-beta1"),
-                        new NuGetVersion("1.1.0-beta2"),
-                        new NuGetVersion("1.1.0"),
-                        new NuGetVersion("1.2.0-beta1"),
-                        new NuGetVersion("1.2.0-beta2"),
-                        new NuGetVersion("1.2.0"),
-                        new NuGetVersion("1.3.0-beta1"),
-                        new NuGetVersion("1.3.0-beta2"),
-                        new NuGetVersion("1.3.0"),
-                        new NuGetVersion("1.0.0-beta1"),
-                        new NuGetVersion("1.0.0-beta2"),
-                        new NuGetVersion("2.0.0"),
-                        new NuGetVersion("2.1.0-beta1"),
-                        new NuGetVersion("2.1.0-beta2"),
-                        new NuGetVersion("2.1.0"),
-                        new NuGetVersion("2.2.0-beta1"),
-                        new NuGetVersion("2.2.0-beta2"),
-                        new NuGetVersion("2.2.0"),
-                        new NuGetVersion("2.3.0-beta1"),
-                        new NuGetVersion("2.3.0-beta2"),
-                        new NuGetVersion("2.3.0"),
-                    });
-
-                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockConsole.Object);
-
-                // arrange
-                Console.SetOut(stringWriter);
+                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
 
                 // act
                 var outputCode = program.Run(args);
 
                 // assert
                 Assert.Equal(0, outputCode);
-
-                var outputLines = stringWriter.ToString().Split("\n").Select(x => x.Trim());
-                Assert.NotEmpty(outputLines);
+                var outputLines = mockStandardOut.ToString().Split("\n").Where(x => !string.IsNullOrEmpty(x)).Select(x => x.Trim()).ToArray();
+                Assert.Equal(expectedVersions, outputLines);
             }
         }
     }

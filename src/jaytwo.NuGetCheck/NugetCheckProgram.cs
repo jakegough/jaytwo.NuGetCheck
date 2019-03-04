@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.CommandLineUtils;
@@ -10,17 +11,20 @@ namespace jaytwo.NuGetCheck
     public class NugetCheckProgram
     {
         private readonly INugetVersionSource _nugetVersionSource;
-        private readonly IConsole _console;
+        private readonly TextWriter _standardOut;
+        private readonly TextWriter _standardError;
+
 
         public NugetCheckProgram()
-            : this(new NugetVersionSource(), new DefaultConsole())
+            : this(new NugetVersionSource(), Console.Out, Console.Error)
         {
         }
 
-        internal NugetCheckProgram(INugetVersionSource nugetVersionSource, IConsole console)
+        internal NugetCheckProgram(INugetVersionSource nugetVersionSource, TextWriter standardOut, TextWriter standardError)
         {
             _nugetVersionSource = nugetVersionSource;
-            _console = console;
+            _standardOut = standardOut;
+            _standardError = standardError;
         }
 
         public int Run(string[] args)
@@ -28,6 +32,8 @@ namespace jaytwo.NuGetCheck
             var app = new CommandLineApplication();
             app.Name = "nugetcheck";
             app.HelpOption("-?|-h|--help");
+            app.Out = _standardOut;
+            app.Error = _standardError;
 
             var packageIdArgument = app.Argument("[package id]", "NuGet package id to query against");
             var lessThanOption = app.Option("-lt <version>", "Show only versions less than this value", CommandOptionType.SingleValue);
@@ -57,10 +63,9 @@ namespace jaytwo.NuGetCheck
             }
             catch (Exception ex)
             {
-                _console.WriteLine(ex.Message);
+                _standardError.WriteLine(ex.Message);
                 return 1;
             }
-
         }
 
         private async Task<int> RunWithOptionsAsync(RunOptions options)
@@ -73,14 +78,14 @@ namespace jaytwo.NuGetCheck
             {
                 foreach (var version in filteredVersions)
                 {
-                    _console.WriteLine(version.ToString());
+                    _standardOut.WriteLine(version.ToString());
                 }
 
                 return 0;
             }
             else
             {
-                _console.WriteLine("No results.");
+                _standardOut.WriteLine("No results.");
                 return -1;
             }
         }
