@@ -11,24 +11,23 @@ helper.xunitTestResultsPattern = 'out/testResults/**/*.trx'
 
 helper.run('linux && make && docker', {
     def timestamp = helper.getTimestamp()
-    def dockerLocalTag = "jenkins__${helper.dockerImageName}__${timestamp}"
+    def safeJobName = env.JOB_NAME.replaceAll('[^A-Za-z0-9]', '_').toLowerCase()
+    def dockerLocalTag = "jenkins__${safeJobName}__${timestamp}"
     
     withEnv(["DOCKER_TAG=${dockerLocalTag}", "TIMESTAMP=${timestamp}"]) {
         try {
             stage ('Build') {
-                sh "make docker-build"
+                sh "make docker-builder"
+                sh "make docker"
             }
             stage ('Unit Test') {
-                sh "make docker-unit-test"
-            }
-            stage ('Integration Test') {
-                sh "make docker-integration-test"
+                sh "make docker-unit-test-only"
             }
             stage ('Pack') {
                 if(env.BRANCH_NAME == 'master'){
-                    sh "make docker-pack"
+                    sh "make docker-pack-only"
                 } else {
-                    sh "make docker-pack-beta"
+                    sh "make docker-pack-beta-only"
                 }
             }
             if(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop'){
@@ -44,9 +43,17 @@ helper.run('linux && make && docker', {
                     def dockerRegistryImage = helper.getDockerRegistryImageName()
                     
                     if(env.BRANCH_NAME == 'master'){
+                        def dockerRegistryImageRelease = "${dockerRegistryImage}:${timestamp}"
+                        
                         helper.tagDockerImage(dockerLocalTag, dockerRegistryImage)
+                        helper.tagDockerImage(dockerLocalTag, dockerRegistryImageRelease)
+                        
                         helper.pushDockerImage(dockerRegistryImage)
+                        helper.pushDockerImage(dockerRegistryImageRelease)
+                        
                         helper.removeDockerImage(dockerRegistryImage)
+                        helper.removeDockerImage(dockerRegistryImageRelease)
+                        
                     } else {
                         def dockerRegistryImageBeta = "${dockerRegistryImage}:beta"
                         def dockerRegistryImagePrerelease = "${dockerRegistryImageBeta}-${timestamp}"
@@ -60,14 +67,12 @@ helper.run('linux && make && docker', {
                         helper.removeDockerImage(dockerRegistryImageBeta)
                         helper.removeDockerImage(dockerRegistryImagePrerelease)
                     }
-                    
-                    helper.removeDockerImage(dockerLocalTag)
                 }
             }
         }
         finally {
-            // not wrapped in a stage because it throws off stage history when cleanup happens because of a failed stage
-            sh "make docker-cleanup"        
+            // inside the withEnv()
+            sh "make docker-clean"
         }
     }
 })

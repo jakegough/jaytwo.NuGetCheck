@@ -1,7 +1,7 @@
 TIMESTAMP?=$(shell date +'%Y%m%d%H%M%S')
-DOCKER_TAG?=jaytwonugetcheck
+DOCKER_TAG?=jaytwo_nugetcheck
 
-default: build
+default: clean build
 
 clean: 
 	find . -name bin | xargs rm -vrf
@@ -14,18 +14,20 @@ restore:
 	dotnet restore . --verbosity minimal
   
 build: restore
-	dotnet build ./src/jaytwo.NuGetCheck
+	dotnet build ./jaytwo.NuGetCheck
 
-run: build
-	dotnet run  --project ./src/jaytwo.NuGetCheck
+run:
+	dotnet run --project ./src/jaytwo.NuGetCheck -- --help
 
+test: unit-test
+  
 unit-test: build
 	rm -rf out/testResults
 	dotnet test ./test/jaytwo.NuGetCheck.Tests \
 		--results-directory ../../out/testResults \
 		--logger "trx;LogFileName=jaytwo.NuGetCheck.Tests.trx"
 
-pack: build
+pack:
 	rm -rf out/packed
 	cd ./src/jaytwo.NuGetCheck; \
 		dotnet pack -o ../../out/packed ${PACK_ARG}
@@ -33,83 +35,41 @@ pack: build
 pack-beta: PACK_ARG=--version-suffix beta-${TIMESTAMP}
 pack-beta: pack
 
-publish: build
+publish:
 	rm -rf out/published
 	cd ./src/jaytwo.NuGetCheck; \
 		dotnet publish -o ../../out/published
 
-integration-test: publish
-	cd ./scripts; \
-		chmod +x ./integration-tests.sh; \
-		./integration-tests.sh
-
-test: unit-test integration-test
-
-docker-image:
-	docker build -t ${DOCKER_TAG} .
-
 DOCKER_BUILDER_TAG?=${DOCKER_TAG}__builder
-docker-build:
+DOCKER_BUILDER_CONTAINER?=${DOCKER_BUILDER_TAG}
+docker-builder:
 	docker build -t ${DOCKER_BUILDER_TAG} . --target builder
-  
-docker-test: docker-build
-	docker run --rm ${DOCKER_BUILDER_TAG} make test
 
-DOCKER_UNIT_TEST_TAG?=${DOCKER_TAG}__unit_test_results
-DOCKER_UNIT_TEST_RESULTS_NAME?=${DOCKER_TAG}__unit_test_results_${TIMESTAMP}
-docker-unit-test: docker-build
-	export DOCKER_UNIT_TEST_TAG=${DOCKER_UNIT_TEST_TAG}; \
-	export DOCKER_UNIT_TEST_RESULTS_NAME=${DOCKER_UNIT_TEST_RESULTS_NAME}; \
-	cd ./scripts; \
-		chmod +x ./docker-unit-tests.sh; \
-		./docker-unit-tests.sh
+docker: docker-builder
+	docker build -t ${DOCKER_TAG} .
+ 
+DOCKER_RUN_MAKE_TARGETS?=pack
+docker-run:
+	docker run --name ${DOCKER_BUILDER_CONTAINER} ${DOCKER_BUILDER_TAG} make ${DOCKER_RUN_MAKE_TARGETS}; \
+	docker cp ${DOCKER_BUILDER_CONTAINER}:build/out ./; \
+	docker rm ${DOCKER_BUILDER_CONTAINER}
 
-DOCKER_INTEGRATION_TEST_TAG?=${DOCKER_TAG}__integration_test_results
-DOCKER_INTEGRATION_TEST_RESULTS_NAME?=${DOCKER_TAG}__integration_test_results_${TIMESTAMP}
-docker-integration-test: docker-build
-	export DOCKER_INTEGRATION_TEST_TAG=${DOCKER_INTEGRATION_TEST_TAG}; \
-	export DOCKER_INTEGRATION_TEST_RESULTS_NAME=${DOCKER_INTEGRATION_TEST_RESULTS_NAME}; \
-	cd ./scripts; \
-		chmod +x ./docker-integration-tests.sh; \
-		./docker-integration-tests.sh
+docker-unit-test-only: DOCKER_RUN_MAKE_TARGETS=unit-test
+docker-unit-test-only: docker-run
 
-docker-run: docker-build
-	docker build -t ${DOCKER_TAG} . --target app
-	docker run ${DOCKER_TAG}
-  
-DOCKER_PACK_BUILD_TARGET?=packer-results
-DOCKER_PACK_TAG?=${DOCKER_TAG}__pack
-DOCKER_PACK_RESULTS_NAME?=${DOCKER_TAG}__pack_${TIMESTAMP}
-docker-pack: docker-build
-	rm -rf out/packed
-	export DOCKER_PACK_BUILD_TARGET=${DOCKER_PACK_BUILD_TARGET}; \
-	export DOCKER_PACK_TAG=${DOCKER_PACK_TAG}; \
-	export DOCKER_PACK_RESULTS_NAME=${DOCKER_PACK_RESULTS_NAME}; \
-	cd ./scripts; \
-		chmod +x ./docker-pack.sh; \
-		./docker-pack.sh
+docker-unit-test: docker-builder docker-unit-test-only
 
-docker-pack-beta: DOCKER_PACK_BUILD_TARGET=packer-beta-results
-docker-pack-beta: docker-pack
+docker-pack-only: DOCKER_RUN_MAKE_TARGETS=pack
+docker-pack-only: docker-run
 
-DOCKER_PUBLISH_BUILD_TARGET?=publisher
-DOCKER_PUBLISH_TAG?=${DOCKER_TAG}__publish
-DOCKER_PUBLISH_RESULTS_NAME?=${DOCKER_TAG}__publisher_${TIMESTAMP}
-docker-publish: docker-build
-	export DOCKER_PUBLISH_BUILD_TARGET=${DOCKER_PUBLISH_BUILD_TARGET}; \
-	export DOCKER_PUBLISH_TAG=${DOCKER_PUBLISH_TAG}; \
-	export DOCKER_PUBLISH_RESULTS_NAME=${DOCKER_PUBLISH_RESULTS_NAME}; \
-	cd ./scripts; \
-		chmod +x ./docker-publish.sh; \
-		./docker-publish.sh
-  
-docker-cleanup:
-	docker rmi ${DOCKER_TAG} || echo "tag ${DOCKER_TAG} not found"
-	docker rm ${DOCKER_UNIT_TEST_RESULTS_NAME} || echo "container ${DOCKER_UNIT_TEST_RESULTS_NAME} not found"
-	docker rmi ${DOCKER_UNIT_TEST_TAG} || echo "tag ${DOCKER_UNIT_TEST_TAG} not found"
-	docker rm ${DOCKER_INTEGRATION_TEST_RESULTS_NAME} || echo "container ${DOCKER_INTEGRATION_TEST_RESULTS_NAME} not found"
-	docker rmi ${DOCKER_INTEGRATION_TEST_TAG} || echo "tag ${DOCKER_INTEGRATION_TEST_TAG} not found"
-	docker rm ${DOCKER_PACK_RESULTS_NAME} || echo "container ${DOCKER_PACK_RESULTS_NAME} not found"
-	docker rmi ${DOCKER_PACK_TAG} || echo "tag ${DOCKER_PACK_TAG} not found"
-	docker rm ${DOCKER_PUBLISH_RESULTS_NAME} || echo "container ${DOCKER_PUBLISH_RESULTS_NAME} not found"
-	docker rmi ${DOCKER_PUBLISH_TAG} || echo "tag ${DOCKER_PUBLISH_TAG} not found"
+docker-pack: docker-builder docker-pack-only
+
+docker-pack-beta-only: DOCKER_RUN_MAKE_TARGETS=pack-beta
+docker-pack-beta-only: docker-run
+
+docker-pack-beta: docker-builder docker-pack-beta-only
+
+docker-clean:
+	docker rm ${DOCKER_BUILDER_CONTAINER} || echo "Container not found: ${DOCKER_BUILDER_CONTAINER}"
+	docker rmi ${DOCKER_BUILDER_TAG} || echo "Image not found: ${DOCKER_BUILDER_TAG}"
+	docker rmi ${DOCKER_TAG} || echo "Image not found: ${DOCKER_TAG}"
