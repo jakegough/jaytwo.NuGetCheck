@@ -7,7 +7,9 @@ I use this in my CI pipelines to fail a build in which I forget to bump the vers
 
 ## Installation
 
+```
 dotnet tool install -g jaytwo.NuGetCheck
+```
 
 ## Normal Usage
 

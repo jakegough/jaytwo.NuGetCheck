@@ -8,7 +8,7 @@ using Xunit;
 
 namespace jaytwo.NuGetCheck.Tests
 {
-    public class NugetCheckProgramTests
+    public class ProgramUnitTests
     {
         [Fact]
         public void Run_returns_negative_1_when_no_package_results()
@@ -24,7 +24,7 @@ namespace jaytwo.NuGetCheck.Tests
             using (var mockStandardOut = new StringWriter())
             using (var mockStandardError = new StringWriter())
             {
-                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var program = new Program(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
                 var args = new[] { packageId };
 
                 // act
@@ -45,7 +45,7 @@ namespace jaytwo.NuGetCheck.Tests
             using (var mockStandardOut = new StringWriter())
             using (var mockStandardError = new StringWriter())
             {
-                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var program = new Program(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
                 var args = new[] { $"--foo=bar" };
 
                 // act
@@ -64,7 +64,7 @@ namespace jaytwo.NuGetCheck.Tests
             using (var mockStandardError = new StringWriter())
             {
                 var mockNugetVersionService = new Mock<INugetVersionSource>();
-                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var program = new Program(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
                 var args = new[] { $"--foo=bar" };
 
                 // act
@@ -85,7 +85,7 @@ namespace jaytwo.NuGetCheck.Tests
             var testNupkg = "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme";
 
             // act
-            var result = NugetCheckProgram.TryLoadNugetVersion(testNupkg, out NuGetVersion version);
+            var result = Program.TryLoadNugetVersion(testNupkg, out NuGetVersion version);
 
             // assert
             Assert.True(result);
@@ -93,20 +93,20 @@ namespace jaytwo.NuGetCheck.Tests
         }
 
         [Theory]
-        [InlineData(new[] { "abc", "-eq", "1.1.0" }, new[] { "1.1.0" })]
-        [InlineData(new[] { "abc", "-lt", "1.1.0" }, new[] { "0.1.0-beta1", "0.1.0-beta2", "0.1.0", "1.0.0-beta", "1.0.0", "1.1.0-beta" })]
-        [InlineData(new[] { "abc", "-lt", "1.1.0", "--same-major" }, new[] { "1.0.0-beta", "1.0.0", "1.1.0-beta" })]
-        [InlineData(new[] { "abc", "-lt", "1.1.0", "--same-minor" }, new[] { "1.1.0-beta" })]
-        [InlineData(new[] { "abc", "-lte", "1.1.0" }, new[] { "0.1.0-beta1", "0.1.0-beta2", "0.1.0", "1.0.0-beta", "1.0.0", "1.1.0-beta", "1.1.0" })]
-        [InlineData(new[] { "abc", "-lte", "1.1.0", "--same-major" }, new[] { "1.0.0-beta", "1.0.0", "1.1.0-beta", "1.1.0" })]
-        [InlineData(new[] { "abc", "-lte", "1.1.0", "--same-minor" }, new[] { "1.1.0-beta", "1.1.0" })]
-        [InlineData(new[] { "abc", "-gt", "2.0.0-beta" }, new[] { "2.0.0", "2.1.0-beta", "2.1.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
-        [InlineData(new[] { "abc", "-gt", "2.0.0-beta", "--same-major" }, new[] { "2.0.0", "2.1.0-beta", "2.1.0" })]
-        [InlineData(new[] { "abc", "-gt", "2.0.0-beta", "--same-minor" }, new[] { "2.0.0" })]
-        [InlineData(new[] { "abc", "-gte", "2.0.0-beta" }, new[] { "2.0.0-beta", "2.0.0", "2.1.0-beta", "2.1.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
-        [InlineData(new[] { "abc", "-gte", "2.0.0-beta", "--same-major" }, new[] { "2.0.0-beta", "2.0.0", "2.1.0-beta", "2.1.0" })]
-        [InlineData(new[] { "abc", "-gte", "2.0.0-beta", "--same-minor" }, new[] { "2.0.0-beta", "2.0.0" })]
-        public void Run_filters_properly(string[] args, string[] expectedVersions)
+        [InlineData(new[] { "abc", "-eq", "1.1.0" }, 0, new[] { "1.1.0" })]
+        [InlineData(new[] { "abc", "-lt", "1.1.0" }, 0, new[] { "0.1.0-beta1", "0.1.0-beta2", "0.1.0", "1.0.0-beta", "1.0.0", "1.1.0-beta" })]
+        [InlineData(new[] { "abc", "-lt", "1.1.0", "--same-major" }, 0, new[] { "1.0.0-beta", "1.0.0", "1.1.0-beta" })]
+        [InlineData(new[] { "abc", "-lt", "1.1.0", "--same-minor" }, 0, new[] { "1.1.0-beta" })]
+        [InlineData(new[] { "abc", "-lte", "1.1.0" }, 0, new[] { "0.1.0-beta1", "0.1.0-beta2", "0.1.0", "1.0.0-beta", "1.0.0", "1.1.0-beta", "1.1.0" })]
+        [InlineData(new[] { "abc", "-lte", "1.1.0", "--same-major" }, 0, new[] { "1.0.0-beta", "1.0.0", "1.1.0-beta", "1.1.0" })]
+        [InlineData(new[] { "abc", "-lte", "1.1.0", "--same-minor" }, 0, new[] { "1.1.0-beta", "1.1.0" })]
+        [InlineData(new[] { "abc", "-gt", "2.0.0-beta" }, 0, new[] { "2.0.0", "2.1.0-beta", "2.1.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "abc", "-gt", "2.0.0-beta", "--same-major" }, 0, new[] { "2.0.0", "2.1.0-beta", "2.1.0" })]
+        [InlineData(new[] { "abc", "-gt", "2.0.0-beta", "--same-minor" }, 0, new[] { "2.0.0" })]
+        [InlineData(new[] { "abc", "-gte", "2.0.0-beta" }, 0, new[] { "2.0.0-beta", "2.0.0", "2.1.0-beta", "2.1.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "abc", "-gte", "2.0.0-beta", "--same-major" }, 0, new[] { "2.0.0-beta", "2.0.0", "2.1.0-beta", "2.1.0" })]
+        [InlineData(new[] { "abc", "-gte", "2.0.0-beta", "--same-minor" }, 0, new[] { "2.0.0-beta", "2.0.0" })]
+        public void Run_filters_properly(string[] args, int expectedExitCode, string[] expectedVersions)
         {
             // arrange
             var mockNugetVersionService = new Mock<INugetVersionSource>();
@@ -132,13 +132,13 @@ namespace jaytwo.NuGetCheck.Tests
             using (var mockStandardOut = new StringWriter())
             using (var mockStandardError = new StringWriter())
             {
-                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var program = new Program(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
 
                 // act
                 var outputCode = program.Run(args);
 
                 // assert
-                Assert.Equal(0, outputCode);
+                Assert.Equal(expectedExitCode, outputCode);
                 var outputLines = mockStandardOut.ToString().Split("\n").Where(x => !string.IsNullOrEmpty(x)).Select(x => x.Trim()).ToArray();
                 Assert.Equal(expectedVersions, outputLines);
             }
@@ -146,20 +146,20 @@ namespace jaytwo.NuGetCheck.Tests
 
 
         [Theory]
-        [InlineData(new[] { "xunit", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "2.1.0-rc1-build3168" })]
-        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta" })]
-        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, new[] { "2.0.0", "2.1.0-beta" })]
-        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, new[] { "2.1.0-beta" })]
-        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
-        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, new[] { "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
-        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, new[] { "2.1.0-beta", "2.1.0-rc1-build3168" })]
-        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
-        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, new[] { "2.1.0", "2.2.0" })]
-        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, new[] { "2.1.0" })]
-        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
-        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0" })]
-        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, new[] { "2.1.0-rc1-build3168", "2.1.0" })]
-        public void Run_filters_properly_file(string[] args, string[] expectedVersions)
+        [InlineData(new[] { "xunit", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, 0, new[] { "2.0.0", "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, 0, new[] { "2.1.0-beta" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, 0, new[] { "2.0.0", "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-lte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, 0, new[] { "2.1.0-beta", "2.1.0-rc1-build3168" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, 0, new[] { "2.1.0", "2.2.0" })]
+        [InlineData(new[] { "xunit", "-gt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, 0, new[] { "2.1.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0", "3.0.0", "3.1.0-beta", "3.1.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, 0, new[] { "2.1.0-rc1-build3168", "2.1.0", "2.2.0" })]
+        [InlineData(new[] { "xunit", "-gte", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-minor" }, 0, new[] { "2.1.0-rc1-build3168", "2.1.0" })]
+        public void Run_filters_properly_file(string[] args, int expectedExitCode, string[] expectedVersions)
         {
             // arrange
             var mockNugetVersionService = new Mock<INugetVersionSource>();
@@ -181,13 +181,13 @@ namespace jaytwo.NuGetCheck.Tests
             using (var mockStandardOut = new StringWriter())
             using (var mockStandardError = new StringWriter())
             {
-                var program = new NugetCheckProgram(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var program = new Program(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
 
                 // act
                 var outputCode = program.Run(args);
 
                 // assert
-                Assert.Equal(0, outputCode);
+                Assert.Equal(expectedExitCode, outputCode);
                 var outputLines = mockStandardOut.ToString().Split("\n").Where(x => !string.IsNullOrEmpty(x)).Select(x => x.Trim()).ToArray();
                 Assert.Equal(expectedVersions, outputLines);
             }

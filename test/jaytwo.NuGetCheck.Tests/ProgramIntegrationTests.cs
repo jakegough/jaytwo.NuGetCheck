@@ -5,7 +5,7 @@ using Xunit;
 
 namespace jaytwo.NuGetCheck.Tests
 {
-    public class ProgramTests
+    public class ProgramIntegrationTests
     {
         [Fact]
         public void Program_Main_returns_success_exit_code_for_happy_path()
