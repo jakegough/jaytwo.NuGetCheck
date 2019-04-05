@@ -36,8 +36,6 @@ helper.run('linux && make && docker', {
                 }
                 
                 stage ('Publish Docker') {                        
-                    sh "make docker-image"
-                    
                     helper.dockerLogin()
                     
                     def dockerRegistryImage = helper.getDockerRegistryImageName()

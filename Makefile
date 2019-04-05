@@ -14,7 +14,7 @@ restore:
 	dotnet restore . --verbosity minimal
   
 build: restore
-	dotnet build ./jaytwo.NuGetCheck
+	dotnet build ./jaytwo.NuGetCheck.sln
 
 run:
 	dotnet run --project ./src/jaytwo.NuGetCheck -- --help
@@ -50,6 +50,7 @@ docker: docker-builder
  
 DOCKER_RUN_MAKE_TARGETS?=pack
 docker-run:
+	# TODO: this will not fail the make target since it's just semicolon-ing all the way to the end
 	docker run --name ${DOCKER_BUILDER_CONTAINER} ${DOCKER_BUILDER_TAG} make ${DOCKER_RUN_MAKE_TARGETS}; \
 	docker cp ${DOCKER_BUILDER_CONTAINER}:build/out ./; \
 	docker rm ${DOCKER_BUILDER_CONTAINER}
