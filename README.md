@@ -1,4 +1,4 @@
-# jaytwo.Common.ParseExtensions
+# jaytwo.NuGetCheck
 
 A [.NET Core Tool](https://docs.microsoft.com/en-us/dotnet/core/tools/global-tools) (and docker image) that can check to see if a NuGet package/version has already been published.
 

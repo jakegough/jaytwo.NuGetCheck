@@ -48,12 +48,12 @@ docker-builder:
 docker: docker-builder
 	docker build -t ${DOCKER_TAG} .
  
-DOCKER_RUN_MAKE_TARGETS?=pack
+DOCKER_RUN_MAKE_TARGETS?=run
 docker-run:
-	# TODO: this will not fail the make target since it's just semicolon-ing all the way to the end
-	docker run --name ${DOCKER_BUILDER_CONTAINER} ${DOCKER_BUILDER_TAG} make ${DOCKER_RUN_MAKE_TARGETS}; \
-	docker cp ${DOCKER_BUILDER_CONTAINER}:build/out ./; \
-	docker rm ${DOCKER_BUILDER_CONTAINER}
+	docker run --name ${DOCKER_BUILDER_CONTAINER} ${DOCKER_BUILDER_TAG} make ${DOCKER_RUN_MAKE_TARGETS} || EXIT_CODE=$$? ; \
+	docker cp ${DOCKER_BUILDER_CONTAINER}:build/out ./ || echo "Container not found: ${DOCKER_BUILDER_CONTAINER}"; \
+	docker rm ${DOCKER_BUILDER_CONTAINER} || echo "Container not found: ${DOCKER_BUILDER_CONTAINER}"}; \
+	exit $$EXIT_CODE
 
 docker-unit-test-only: DOCKER_RUN_MAKE_TARGETS=unit-test
 docker-unit-test-only: docker-run
