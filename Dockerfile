@@ -22,6 +22,8 @@ RUN make publish
 
 
 FROM dotnet-runtime AS app
-WORKDIR /app
+RUN echo "#!/bin/sh" > /usr/local/bin/nugetcheck \
+  && echo "dotnet /app/jaytwo.NuGetCheck.dll \$@" >> /usr/local/bin/nugetcheck \
+  && chmod +x /usr/local/bin/nugetcheck
 COPY --from=publisher /build/out/published /app
-ENTRYPOINT ["dotnet", "jaytwo.NuGetCheck.dll"]
+ENTRYPOINT ["nugetcheck"]

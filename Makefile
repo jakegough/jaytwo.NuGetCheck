@@ -4,11 +4,9 @@ DOCKER_TAG?=jaytwo_nugetcheck
 default: clean build
 
 clean: 
-	find . -name bin | xargs rm -vrf
-	find . -name obj | xargs rm -vrf
-	find . -name publish | xargs rm -vrf
-	find . -name project.lock.json | xargs rm -vrf
-	find . -name out | xargs rm -vrf
+	find . -name bin | xargs --no-run-if-empty rm -vrf
+	find . -name obj | xargs --no-run-if-empty rm -vrf
+	rm -rf out
 
 restore:
 	dotnet restore . --verbosity minimal
