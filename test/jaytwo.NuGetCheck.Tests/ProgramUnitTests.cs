@@ -146,6 +146,7 @@ namespace jaytwo.NuGetCheck.Tests
 
 
         [Theory]
+        [InlineData(new[] { "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "2.1.0-rc1-build3168" })]
         [InlineData(new[] { "xunit", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "2.1.0-rc1-build3168" })]
         [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "0.1.0", "1.0.0", "2.0.0", "2.1.0-beta" })]
         [InlineData(new[] { "xunit", "-lt", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "--same-major" }, 0, new[] { "2.0.0", "2.1.0-beta" })]

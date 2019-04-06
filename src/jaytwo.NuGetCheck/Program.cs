@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.CommandLineUtils;
 using NuGet.Packaging;
+using NuGet.Packaging.Core;
 using NuGet.Versioning;
 
 namespace jaytwo.NuGetCheck
@@ -33,11 +34,12 @@ namespace jaytwo.NuGetCheck
         {
             var app = new CommandLineApplication();
             app.Name = "nugetcheck";
-            app.HelpOption("-?|-h|--help");
+            app.HelpOption("--help");
+            app.VersionOption("--version", GetType().Assembly.GetName().Version.ToString());
             app.Out = _standardOut;
             app.Error = _standardError;
 
-            var packageIdArgument = app.Argument("[package-id]", "NuGet package id to query against");
+            var packageIdArgument = app.Argument("[package-id-or-file]", "NuGet package id or file to query against");
 
             var equalToOption = app.Option("-eq <version-or-file>", "Show only versions equal to this value", CommandOptionType.SingleValue);
             var lessThanOption = app.Option("-lt <version-or-file>", "Show only versions less than this value", CommandOptionType.SingleValue);
@@ -47,7 +49,7 @@ namespace jaytwo.NuGetCheck
 
             var sameMajorVersionOption = app.Option("--same-major", "Show only versions with the same major version as specified in options", CommandOptionType.NoValue);
             var sameMinorVersionOption = app.Option("--same-minor", "Show only versions with the same major and minor versions as specified in options", CommandOptionType.NoValue);
-            
+
             // TODO: one supported use case is that we actually want to fail when the package already exists, so we need to invert the exit code
             //var failIfExistsOption = app.Option("--fail-if-exists", "Return a non-zero exit code if any versions are returned", CommandOptionType.NoValue);
 
@@ -79,7 +81,8 @@ namespace jaytwo.NuGetCheck
 
         private async Task<int> RunWithOptionsAsync(RunOptions options)
         {
-            var allVersions = await _nugetVersionSource.GetPackageVersionsAsync(options.PackageId);
+            var packageId = GetPackageIdentityFromFile(options.PackageId)?.Id ?? options.PackageId;
+            var allVersions = await _nugetVersionSource.GetPackageVersionsAsync(packageId);
 
             var filteredVersions = ApplyFiltersFromOptions(allVersions, options).ToList();
 
@@ -101,87 +104,74 @@ namespace jaytwo.NuGetCheck
 
         internal static IEnumerable<NuGetVersion> ApplyFiltersFromOptions(IEnumerable<NuGetVersion> versions, RunOptions options)
         {
-            IEnumerable<NuGetVersion> result = new List<NuGetVersion>(versions);
+            var result = versions;
 
-            if (NuGetVersion.TryParse(options.EqualTo, out NuGetVersion equalToVersion))
-            {
-                result = result.Where(x => x == equalToVersion);
-            }
-            else if (TryLoadNugetVersion(options.EqualTo, out NuGetVersion fileVersion))
-            {
-                result = result.Where(x => x == fileVersion);
-            }
+            result = FilterByPredicate(result, options.EqualTo, (a, b) => a == b);
+            
+            result = FilterByPredicate(result, options.GreaterThan, (a, b) => a > b);
+            result = FilterByPredicate(result, options.GreaterThanOrEqualTo, (a, b) => a >= b);
+            result = FilterByPredicate(result, options.LessThan, (a, b) => a < b);
+            result = FilterByPredicate(result, options.LessThanOrEqualTo, (a, b) => a <= b);
 
-            if (NuGetVersion.TryParse(options.GreaterThan, out NuGetVersion greaterThanVersion))
+            if (options.SameMajorVersion ?? false)
             {
-                result = result.Where(x => x > greaterThanVersion);
-                result = ApplyMajorMinorVersionFilterFromOptions(result, greaterThanVersion, options);
-            }
-            else if (TryLoadNugetVersion(options.GreaterThan, out NuGetVersion fileVersion))
-            {
-                result = result.Where(x => x > fileVersion);
-                result = ApplyMajorMinorVersionFilterFromOptions(result, fileVersion, options);
+                result = FilterByPredicate(result, options.GreaterThan, IsMajorVersionEqualTo);
+                result = FilterByPredicate(result, options.GreaterThanOrEqualTo, IsMajorVersionEqualTo);
+                result = FilterByPredicate(result, options.LessThan, IsMajorVersionEqualTo);
+                result = FilterByPredicate(result, options.LessThanOrEqualTo, IsMajorVersionEqualTo);
             }
 
-            if (NuGetVersion.TryParse(options.GreaterThanOrEqualTo, out NuGetVersion greaterThanOrEqualToVersion))
+            if (options.SameMinorVersion ?? false)
             {
-                result = result.Where(x => x >= greaterThanOrEqualToVersion);
-                result = ApplyMajorMinorVersionFilterFromOptions(result, greaterThanOrEqualToVersion, options);
-            }
-            else if (TryLoadNugetVersion(options.GreaterThanOrEqualTo, out NuGetVersion fileVersion))
-            {
-                result = result.Where(x => x >= fileVersion);
-                result = ApplyMajorMinorVersionFilterFromOptions(result, fileVersion, options);
-            }
-
-            if (NuGetVersion.TryParse(options.LessThan, out NuGetVersion lessThanVersion))
-            {
-                result = result.Where(x => x < lessThanVersion);
-                result = ApplyMajorMinorVersionFilterFromOptions(result, lessThanVersion, options);
-            }
-            else if (TryLoadNugetVersion(options.LessThan, out NuGetVersion fileVersion))
-            {
-                result = result.Where(x => x < fileVersion);
-                result = ApplyMajorMinorVersionFilterFromOptions(result, fileVersion, options);
-            }
-
-            if (NuGetVersion.TryParse(options.LessThanOrEqualTo, out NuGetVersion lessThanOrEqualToVersion))
-            {
-                result = result.Where(x => x <= lessThanOrEqualToVersion);
-                result = ApplyMajorMinorVersionFilterFromOptions(result, lessThanOrEqualToVersion, options);
-            }
-            else if (TryLoadNugetVersion(options.LessThanOrEqualTo, out NuGetVersion fileVersion))
-            {
-                result = result.Where(x => x <= fileVersion);
-                result = ApplyMajorMinorVersionFilterFromOptions(result, fileVersion, options);
+                result = FilterByPredicate(result, options.GreaterThan, IsMajorMinorVersionEqualTo);
+                result = FilterByPredicate(result, options.GreaterThanOrEqualTo, IsMajorMinorVersionEqualTo);
+                result = FilterByPredicate(result, options.LessThan, IsMajorMinorVersionEqualTo);
+                result = FilterByPredicate(result, options.LessThanOrEqualTo, IsMajorMinorVersionEqualTo);
             }
 
             return result;
         }
 
-        internal static IEnumerable<NuGetVersion> ApplyMajorMinorVersionFilterFromOptions(IEnumerable<NuGetVersion> versions, NuGetVersion version, RunOptions options)
+        public static bool IsMajorVersionEqualTo(NuGetVersion a, NuGetVersion b)
         {
-            return ApplyMajorMinorVersionFilter(versions, version, options.SameMinorVersion, options.SameMajorVersion);
+            return a.Major == b.Major;
         }
 
-        internal static IEnumerable<NuGetVersion> ApplyMajorMinorVersionFilter(IEnumerable<NuGetVersion> versions, NuGetVersion version, bool? sameMinorVersion, bool? sameMajorVersion)
+        public static bool IsMajorMinorVersionEqualTo(NuGetVersion a, NuGetVersion b)
         {
-            IEnumerable<NuGetVersion> result = new List<NuGetVersion>(versions);
+            return a.Major == b.Major && a.Minor == b.Minor;
+        }
 
-            if (sameMinorVersion ?? false)
+        internal static IEnumerable<NuGetVersion> FilterByPredicate(IEnumerable<NuGetVersion> versions, string versionOrFile, Func<NuGetVersion, NuGetVersion, bool> predicate)
+        {
+            NuGetVersion version;
+            var result = versions;
+
+            if (NuGetVersion.TryParse(versionOrFile, out version))
             {
-                result = result.WhereMajorMinorVersionEqualTo(version);
+                result = result.Where(x => predicate(x, version));
             }
-
-            if (sameMajorVersion ?? false)
+            else if (TryLoadNugetVersion(versionOrFile, out version))
             {
-                result = result.WhereMajorVersionEqualTo(version);
+                result = result.Where(x => predicate(x, version));
             }
 
             return result;
         }
 
-        internal static bool TryLoadNugetVersion(string path, out NuGetVersion version)
+        internal static PackageIdentity GetPackageIdentityFromFile(string path)
+        {
+            if (TryLoadPackageIdentityFromFile(path, out PackageIdentity result))
+            {
+                return result;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        internal static bool TryLoadPackageIdentityFromFile(string path, out PackageIdentity packageIdentity)
         {
             try
             {
@@ -190,7 +180,7 @@ namespace jaytwo.NuGetCheck
                 {
                     using (var archive = new PackageArchiveReader(file.FullName))
                     {
-                        version = archive.GetIdentity().Version;
+                        packageIdentity = archive.GetIdentity();
                         return true;
                     }
                 }
@@ -199,8 +189,22 @@ namespace jaytwo.NuGetCheck
             {
             }
 
-            version = null;
+            packageIdentity = null;
             return false;
+        }
+
+        internal static bool TryLoadNugetVersion(string path, out NuGetVersion version)
+        {
+            if (TryLoadPackageIdentityFromFile(path, out PackageIdentity packageIdentity))
+            {
+                version = packageIdentity.Version;
+                return true;
+            }
+            else
+            {
+                version = null;
+                return false;
+            }
         }
     }
 }
