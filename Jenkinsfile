@@ -11,7 +11,7 @@ helper.xunitTestResultsPattern = 'out/testResults/**/*.trx'
 
 helper.run('linux && make && docker', {
     def timestamp = helper.getTimestamp()
-    def safeJobName = env.JOB_NAME.replaceAll('[^A-Za-z0-9]', '_').toLowerCase()
+    def safeJobName = helper.getSafeJobName()
     def dockerLocalTag = "jenkins__${safeJobName}__${timestamp}"
     
     withEnv(["DOCKER_TAG=${dockerLocalTag}", "TIMESTAMP=${timestamp}"]) {
@@ -36,34 +36,11 @@ helper.run('linux && make && docker', {
                 }
                 
                 stage ('Publish Docker') {                        
-                    helper.dockerLogin()
-                    
-                    def dockerRegistryImage = helper.getDockerRegistryImageName()
-                    
-                    if(env.BRANCH_NAME == 'master'){
-                        def dockerRegistryImageRelease = "${dockerRegistryImage}:${timestamp}"
-                        
-                        helper.tagDockerImage(dockerLocalTag, dockerRegistryImage)
-                        helper.tagDockerImage(dockerLocalTag, dockerRegistryImageRelease)
-                        
-                        helper.pushDockerImage(dockerRegistryImage)
-                        helper.pushDockerImage(dockerRegistryImageRelease)
-                        
-                        helper.removeDockerImage(dockerRegistryImage)
-                        helper.removeDockerImage(dockerRegistryImageRelease)
-                        
-                    } else {
-                        def dockerRegistryImageBeta = "${dockerRegistryImage}:beta"
-                        def dockerRegistryImagePrerelease = "${dockerRegistryImageBeta}-${timestamp}"
-                        
-                        helper.tagDockerImage(dockerLocalTag, dockerRegistryImageBeta)
-                        helper.tagDockerImage(dockerLocalTag, dockerRegistryImagePrerelease)
-                        
-                        helper.pushDockerImage(dockerRegistryImageBeta)
-                        helper.pushDockerImage(dockerRegistryImagePrerelease)
-                        
-                        helper.removeDockerImage(dockerRegistryImageBeta)
-                        helper.removeDockerImage(dockerRegistryImagePrerelease)
+                    if(env.BRANCH_NAME == 'develop') {
+                        helper.tagAndPushDockerImageBeta(timestamp)
+                    }
+                    if(env.BRANCH_NAME == 'master') {
+                        helper.tagAndPushDockerImageRelease(timestamp)
                     }
                 }
             }
