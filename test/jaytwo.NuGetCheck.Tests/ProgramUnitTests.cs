@@ -37,29 +37,31 @@ namespace jaytwo.NuGetCheck.Tests
             }
         }
 
-        [Fact]
-        public void Run_returns_zero_when_no_package_results_on_opposite_day()
+        [Theory]
+        [InlineData(new[] { "abc", "-eq", "1.2.3", "--opposite-day" }, -1, new[] { "1.2.3" })]
+        [InlineData(new[] { "abc", "-eq", "1.2.3" }, 0, new[] { "1.2.3" })]
+        [InlineData(new[] { "abc", "-eq", "5.5.5", "--opposite-day" }, 0, new[] { "No results." })]
+        [InlineData(new[] { "abc", "-eq", "5.5.5" }, -1, new[] { "No results." })]
+        public void Run_returns_expected_exit_code_on_opposite_day(string[] args, int expectedExitCode, string[] expectedVersions)
         {
             // arrange
-            var packageId = "anything";
-
             var mockNugetVersionService = new Mock<INugetVersionSource>();
             mockNugetVersionService
-                .Setup(x => x.GetPackageVersionsAsync(packageId))
-                .ReturnsAsync(new NuGetVersion[] { });
+                .Setup(x => x.GetPackageVersionsAsync("abc"))
+                .ReturnsAsync(new NuGetVersion[] { new NuGetVersion("1.2.3") });
 
             using (var mockStandardOut = new StringWriter())
             using (var mockStandardError = new StringWriter())
             {
                 var program = new Program(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
-                var args = new[] { packageId, "--opposite-day" };
 
                 // act
-                var result = program.Run(args);
+                var outputCode = program.Run(args);
 
                 // assert
-                Assert.Equal(0, result);
-                mockNugetVersionService.VerifyAll();
+                Assert.Equal(expectedExitCode, outputCode);
+                var outputLines = mockStandardOut.ToString().Split("\n").Where(x => !string.IsNullOrEmpty(x)).Select(x => x.Trim()).ToArray();
+                Assert.Equal(expectedVersions, outputLines);
             }
         }
 
