@@ -37,10 +37,10 @@ helper.run('linux && make && docker', {
                 
                 stage ('Publish Docker') {                        
                     if(env.BRANCH_NAME == 'develop') {
-                        helper.tagAndPushDockerImageBeta(timestamp)
+                        helper.tagAndPushDockerImageBeta(dockerLocalTag, timestamp)
                     }
                     if(env.BRANCH_NAME == 'master') {
-                        helper.tagAndPushDockerImageRelease(timestamp)
+                        helper.tagAndPushDockerImageRelease(dockerLocalTag, timestamp)
                     }
                 }
             }
