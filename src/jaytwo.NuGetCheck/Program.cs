@@ -50,8 +50,7 @@ namespace jaytwo.NuGetCheck
             var sameMajorVersionOption = app.Option("--same-major", "Show only versions with the same major version as specified in options", CommandOptionType.NoValue);
             var sameMinorVersionOption = app.Option("--same-minor", "Show only versions with the same major and minor versions as specified in options", CommandOptionType.NoValue);
 
-            // TODO: one supported use case is that we actually want to fail when the package already exists, so we need to invert the exit code
-            //var failIfExistsOption = app.Option("--fail-if-exists", "Return a non-zero exit code if any versions are returned", CommandOptionType.NoValue);
+            var oppositeDayOption = app.Option("--opposite-day", "Return a non-zero exit code if any versions are returned", CommandOptionType.NoValue);
 
             app.OnExecute(() =>
             {
@@ -65,6 +64,7 @@ namespace jaytwo.NuGetCheck
                     LessThanOrEqualTo = lessThanOrEqualToOption.HasValue() ? lessThanOrEqualToOption.Value() : null,
                     SameMajorVersion = sameMajorVersionOption.HasValue(),
                     SameMinorVersion = sameMinorVersionOption.HasValue(),
+                    OppositeDay = oppositeDayOption.HasValue(),
                 });
             });
 
@@ -86,6 +86,9 @@ namespace jaytwo.NuGetCheck
 
             var filteredVersions = ApplyFiltersFromOptions(allVersions, options).ToList();
 
+            var versionsExistExitCode = options.OppositeDay ? -1 : 0;
+            var noVersionsExitCode = options.OppositeDay ? 0 : -1;
+
             if (filteredVersions.Any())
             {
                 foreach (var version in filteredVersions)
@@ -93,12 +96,12 @@ namespace jaytwo.NuGetCheck
                     _standardOut.WriteLine(version.ToString());
                 }
 
-                return 0;
+                return versionsExistExitCode;
             }
             else
             {
                 _standardOut.WriteLine("No results.");
-                return -1;
+                return noVersionsExitCode;
             }
         }
 
@@ -107,7 +110,7 @@ namespace jaytwo.NuGetCheck
             var result = versions;
 
             result = FilterByPredicate(result, options.EqualTo, (a, b) => a == b);
-            
+
             result = FilterByPredicate(result, options.GreaterThan, (a, b) => a > b);
             result = FilterByPredicate(result, options.GreaterThanOrEqualTo, (a, b) => a >= b);
             result = FilterByPredicate(result, options.LessThan, (a, b) => a < b);
@@ -147,13 +150,16 @@ namespace jaytwo.NuGetCheck
             NuGetVersion version;
             var result = versions;
 
-            if (NuGetVersion.TryParse(versionOrFile, out version))
+            if (!string.IsNullOrWhiteSpace(versionOrFile))
             {
-                result = result.Where(x => predicate(x, version));
-            }
-            else if (TryLoadNugetVersion(versionOrFile, out version))
-            {
-                result = result.Where(x => predicate(x, version));
+                if (NuGetVersion.TryParse(versionOrFile, out version))
+                {
+                    result = result.Where(x => predicate(x, version));
+                }
+                else if (TryLoadNugetVersion(versionOrFile, out version))
+                {
+                    result = result.Where(x => predicate(x, version));
+                }
             }
 
             return result;
@@ -175,13 +181,16 @@ namespace jaytwo.NuGetCheck
         {
             try
             {
-                var file = new FileInfo(path);
-                if (file.Exists)
+                if (!string.IsNullOrWhiteSpace(path))
                 {
-                    using (var archive = new PackageArchiveReader(file.FullName))
+                    var file = new FileInfo(path);
+                    if (file.Exists)
                     {
-                        packageIdentity = archive.GetIdentity();
-                        return true;
+                        using (var archive = new PackageArchiveReader(file.FullName))
+                        {
+                            packageIdentity = archive.GetIdentity();
+                            return true;
+                        }
                     }
                 }
             }

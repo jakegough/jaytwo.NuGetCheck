@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Moq;
+using NuGet.Packaging.Core;
 using NuGet.Versioning;
 using Xunit;
 
@@ -32,6 +33,32 @@ namespace jaytwo.NuGetCheck.Tests
 
                 // assert
                 Assert.Equal(-1, result);
+                mockNugetVersionService.VerifyAll();
+            }
+        }
+
+        [Fact]
+        public void Run_returns_zero_when_no_package_results_on_opposite_day()
+        {
+            // arrange
+            var packageId = "anything";
+
+            var mockNugetVersionService = new Mock<INugetVersionSource>();
+            mockNugetVersionService
+                .Setup(x => x.GetPackageVersionsAsync(packageId))
+                .ReturnsAsync(new NuGetVersion[] { });
+
+            using (var mockStandardOut = new StringWriter())
+            using (var mockStandardError = new StringWriter())
+            {
+                var program = new Program(mockNugetVersionService.Object, mockStandardOut, mockStandardError);
+                var args = new[] { packageId, "--opposite-day" };
+
+                // act
+                var result = program.Run(args);
+
+                // assert
+                Assert.Equal(0, result);
                 mockNugetVersionService.VerifyAll();
             }
         }
@@ -90,6 +117,22 @@ namespace jaytwo.NuGetCheck.Tests
             // assert
             Assert.True(result);
             Assert.Equal(new NuGetVersion("2.1.0-rc1-build3168"), version);
+        }
+
+        [Fact]
+        public void TryLoadPackageIdentityFromFile_works_on_nupkg()
+        {
+            // arrange
+            var testNupkg = "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme";
+
+            // act
+            var result = Program.TryLoadPackageIdentityFromFile(testNupkg, out PackageIdentity packageIdentity);
+
+            // assert
+            Assert.True(result);
+            Assert.Equal("xunit", packageIdentity.Id);
+            Assert.True(packageIdentity.HasVersion);
+            Assert.Equal(new NuGetVersion("2.1.0-rc1-build3168"), packageIdentity.Version);
         }
 
         [Theory]

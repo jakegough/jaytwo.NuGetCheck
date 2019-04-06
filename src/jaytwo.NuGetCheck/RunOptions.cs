@@ -17,5 +17,7 @@
         public bool? SameMajorVersion { get; set; }
 
         public bool? SameMinorVersion { get; set; }
+
+        public bool OppositeDay { get; set; }
     }
 }
