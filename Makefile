@@ -41,10 +41,10 @@ publish:
 DOCKER_BUILDER_TAG?=${DOCKER_TAG}__builder
 DOCKER_BUILDER_CONTAINER?=${DOCKER_BUILDER_TAG}
 docker-builder:
-	docker build -t ${DOCKER_BUILDER_TAG} . --target builder
+	docker build -t ${DOCKER_BUILDER_TAG} . --target builder --pull
 
 docker: docker-builder
-	docker build -t ${DOCKER_TAG} .
+	docker build -t ${DOCKER_TAG} . --pull
  
 DOCKER_RUN_MAKE_TARGETS?=run
 docker-run:
