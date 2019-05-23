@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -157,7 +157,8 @@ namespace jaytwo.NuGetCheck.Tests
             var mockNugetVersionService = new Mock<INugetVersionSource>();
             mockNugetVersionService
                 .Setup(x => x.GetPackageVersionsAsync("abc"))
-                .ReturnsAsync(new NuGetVersion[] {
+                .ReturnsAsync(new NuGetVersion[]
+                {
                     new NuGetVersion("0.1.0-beta1"),
                     new NuGetVersion("0.1.0-beta2"),
                     new NuGetVersion("0.1.0"),
@@ -189,7 +190,6 @@ namespace jaytwo.NuGetCheck.Tests
             }
         }
 
-
         [Theory]
         [InlineData(new[] { "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "2.1.0-rc1-build3168" })]
         [InlineData(new[] { "xunit", "-eq", "TestData/xunit.2.1.0-rc1-build3168.nupkg.keepme" }, 0, new[] { "2.1.0-rc1-build3168" })]
@@ -211,7 +211,8 @@ namespace jaytwo.NuGetCheck.Tests
             var mockNugetVersionService = new Mock<INugetVersionSource>();
             mockNugetVersionService
                 .Setup(x => x.GetPackageVersionsAsync("xunit"))
-                .ReturnsAsync(new NuGetVersion[] {
+                .ReturnsAsync(new NuGetVersion[]
+                {
                     new NuGetVersion("0.1.0"),
                     new NuGetVersion("1.0.0"),
                     new NuGetVersion("2.0.0"),
